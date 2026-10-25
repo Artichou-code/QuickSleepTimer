@@ -8,7 +8,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -41,6 +43,7 @@ class TimerService : Service() {
     private var hudWindowJob: Job? = null
     private var progressiveDimmerJob: Job? = null
     private var progressiveVolumeJob: Job? = null
+    private var testVolumeFadeJob: Job? = null
     private var initialAudioVolume: Int? = null
 
     private var targetSleepRealtimeMs: Long = 0L
@@ -69,8 +72,18 @@ class TimerService : Service() {
         when (action) {
             ACTION_TOGGLE_OR_INCREMENT -> handleToggleOrIncrement()
             ACTION_CANCEL -> cancelTimer(showHud = true)
-            ACTION_TEST_SLEEP -> executeSleepImmediate()
-            ACTION_TEST_VOLUME_FADE -> testVolumeFade()
+            ACTION_TEST_SLEEP -> {
+                if (currentState == TimerState.INACTIVE) {
+                    startForegroundNotification(1)
+                }
+                executeSleepImmediate()
+            }
+            ACTION_TEST_VOLUME_FADE -> {
+                if (currentState == TimerState.INACTIVE) {
+                    startForegroundNotification(1)
+                }
+                testVolumeFade()
+            }
         }
 
         return START_NOT_STICKY
@@ -595,32 +608,82 @@ class TimerService : Service() {
     }
 
     private fun testVolumeFade() {
-        serviceScope.launch {
+        testVolumeFadeJob?.cancel()
+        testVolumeFadeJob = serviceScope.launch {
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return@launch
-            val startVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            overlayManager.showHud(
-                title = "Test Baisse Volume (${startVol})",
-                subtitle = "Fondu sur 8s puis restauration...",
-                autoDismissMs = 4000L
-            )
+            val originalVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
 
-            val steps = 8
-            val targetMin = (startVol / 3).coerceAtLeast(0)
-            val stepVol = (startVol - targetMin).toFloat() / steps
-
-            for (i in 1..steps) {
-                delay(1000L)
-                val v = (startVol - (i * stepVol)).toInt().coerceAtLeast(0)
-                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0)
+            // Si le volume actuel est trop bas pour entendre le test, on démarre à un niveau sonore confortable
+            val testStartVol = if (originalVol < 6) 12 else originalVol
+            if (originalVol != testStartVol) {
+                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, testStartVol, 0)
             }
 
-            delay(1500L)
-            audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, startVol, 0)
+            var mediaPlayer: MediaPlayer? = null
+            try {
+                mediaPlayer = MediaPlayer.create(applicationContext, R.raw.test_melody)?.apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    isLooping = true
+                    start()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error playing test melody: ${e.message}")
+            }
+
+            try {
+                overlayManager.showHud(
+                    title = "Test Baisse Volume (${testStartVol})",
+                    subtitle = "🎵 Tchaïkovski — Casse-Noisette (Fée Dragée)",
+                    autoDismissMs = 3800L
+                )
+
+                val steps = 8
+                val stepVol = testStartVol.toFloat() / steps
+
+                for (i in 1..steps) {
+                    delay(1000L)
+                    val v = (testStartVol - (i * stepVol)).toInt().coerceAtLeast(0)
+                    try {
+                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Error adjusting test volume: ${e.message}")
+                    }
+                }
+
+                delay(1200L)
+            } finally {
+                try {
+                    mediaPlayer?.stop()
+                    mediaPlayer?.release()
+                } catch (e: Exception) {}
+
+                try {
+                    audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, originalVol, 0)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error restoring original volume: ${e.message}")
+                }
+            }
+
             overlayManager.showHud(
-                title = "Test terminé",
-                subtitle = "Volume restauré au niveau initial ($startVol)",
+                title = "Test terminé ✓",
+                subtitle = "Volume restauré au niveau initial ($originalVol)",
                 autoDismissMs = 4000L
             )
+
+            if (currentState == TimerState.INACTIVE) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                } else {
+                    @Suppress("DEPRECATION")
+                    stopForeground(true)
+                }
+                stopSelf()
+            }
         }
     }
 
