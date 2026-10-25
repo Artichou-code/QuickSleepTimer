@@ -1,0 +1,75 @@
+<resources>
+    <string name="app_name">QuickSleepTimer</string>
+    <string name="title_settings">QuickSleep Réglages</string>
+    <string name="accessibility_service_desc">Service d\'accessibilité permettant la mise en veille matérielle de la télévision et l\'interception native sans interruption de flux vidéo.</string>
+
+    <!-- Headers & Sections -->
+    <string name="title_app">QuickSleepTimer</string>
+    <string name="subtitle_app">Minuterie de veille TV — Zéro Interruption</string>
+    <string name="section_duration">Configuration des Durées</string>
+    <string name="section_permissions">État des Permissions</string>
+    <string name="section_trigger">Mode de Déclenchement</string>
+    <string name="section_dimmer">Night Dimmer (Assombrissement Logiciel)</string>
+    <string name="section_tests">Zone de Test</string>
+
+    <!-- Durations -->
+    <string name="label_initial_duration">Durée initiale (1er appui) :</string>
+    <string name="label_step_duration">Palier d\'ajout (+min) :</string>
+    <string name="label_max_duration">Plafond avant remise à zéro :</string>
+
+    <!-- Permissions -->
+    <string name="perm_overlay_title">Superposition d\'écran (HUD)</string>
+    <string name="perm_accessibility_title">Service d\'Accessibilité (Veille)</string>
+    <string name="status_granted">Actif (OK)</string>
+    <string name="status_missing">Requis (Cliquer pour activer)</string>
+
+    <!-- Trigger Modes -->
+    <string name="trigger_mode_accessibility">Interception directe (Accessibilité - 100% sans pause)</string>
+    <string name="trigger_mode_button_mapper">TriggerActivity (Compatible Button Mapper)</string>
+    <string name="btn_assign_key">Assigner une touche de télécommande</string>
+    <string name="btn_assign_key_listening">Appuyez sur la touche de votre télécommande…</string>
+    <string name="assigned_key_format">Touche actuelle : %1$s (Code: %2$d)</string>
+    <string name="key_forbidden_warning">Touche système réservée ! Choisissez un bouton dédié.</string>
+
+    <!-- Night Dimmer -->
+    <string name="dimmer_switch">Activer l\'assombrissement d\'écran pendant le timer</string>
+    <string name="dimmer_intensity_label">Intensité du filtre noir :</string>
+    <string name="dimmer_intensity_light">Léger (25%)</string>
+    <string name="dimmer_intensity_medium">Moyen (50%)</string>
+    <string name="dimmer_intensity_strong">Fort (75%)</string>
+    <string name="dimmer_intensity_very_strong">Très fort (85%)</string>
+    <string name="dimmer_intensity_extreme">Nuit noire (95%)</string>
+    <string name="dimmer_mode_label">Déclenchement :</string>
+    <string name="dimmer_mode_immediate">Immédiat dès le début</string>
+    <string name="dimmer_mode_full">Progressif dès le début (toute la durée)</string>
+    <string name="dimmer_mode_last_5min">Progressif sur les 5 dernières minutes</string>
+    <string name="btn_test_dimmer">Tester l\'assombrissement (4s)</string>
+
+    <!-- Progressive Volume Reduction -->
+    <string name="section_volume_fade">Baisse de Volume Progressive</string>
+    <string name="volume_fade_label">Déclenchement du fondu sonore :</string>
+    <string name="volume_fade_mode_last_5min">5 dernières minutes (Recommandé)</string>
+    <string name="volume_fade_mode_last_10min">10 dernières minutes</string>
+    <string name="volume_fade_mode_full">Toute la durée du timer</string>
+    <string name="btn_test_volume_fade">Tester la baisse de volume (simulation 10s)</string>
+    <string name="volume_restore_label">Restaurer le volume au réveil :</string>
+    <string name="volume_restore_yes">OUI (Volume initial restauré)</string>
+    <string name="volume_restore_no">NON (Volume reste coupé)</string>
+
+    <!-- Actions & Tests -->
+    <string name="btn_simulate_press">Simuler un appui télécommande</string>
+    <string name="btn_test_sleep">Tester la mise en veille immédiate</string>
+
+    <!-- HUD messages -->
+    <string name="hud_timer_started">Veille dans %1$d min</string>
+    <string name="hud_timer_remaining">Temps restant : %1$d min</string>
+    <string name="hud_timer_cancelled">Veille programmée annulée</string>
+    <string name="hud_warning_5m">Mise en veille dans 5 min</string>
+    <string name="hud_warning_60s">Mise en veille dans 60s… Appuyez pour ajouter du temps</string>
+
+    <!-- Notification -->
+    <string name="notif_channel_name">Minuterie de Veille</string>
+    <string name="notif_channel_desc">Affichage du décompte actif de mise en veille</string>
+    <string name="notif_title">QuickSleepTimer actif</string>
+    <string name="notif_content_running">Mise en veille programmée dans %1$s</string>
+</resources>

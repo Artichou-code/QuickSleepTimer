@@ -1,0 +1,659 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/tv_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="48dp"
+        android:paddingTop="36dp"
+        android:paddingEnd="48dp"
+        android:paddingBottom="48dp">
+
+        <!-- App Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_moon" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/title_app"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="26sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/subtitle_app"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvTimerStatusBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_hud_pill"
+                android:text="Timer inactif"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Section 1 : Configuration des Durées -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/section_duration"
+            android:textColor="@color/tv_accent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <!-- 1er appui card -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_selector"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_initial_duration"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnInitialDuration"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="20 min"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Palier card -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_selector"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_step_duration"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnStepDuration"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="+10 min"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- Plafond max card -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_selector"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_max_duration"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnMaxDuration"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="120 min"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Section 2 : Permissions -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/section_permissions"
+            android:textColor="@color/tv_accent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <!-- Overlay Permission -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_selector"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/perm_overlay_title"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvOverlayStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/status_missing"
+                    android:textColor="@color/tv_status_warning"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnPermOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="Autoriser la superposition"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- Accessibility Permission -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_selector"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/perm_accessibility_title"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvAccessibilityStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/status_missing"
+                    android:textColor="@color/tv_status_warning"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnPermAccessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="Activer dans Paramètres"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="💡 Ne pas activer TalkBack. Descendre dans Services > QuickSleepTimer."
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Section 3 : Mode de Déclenchement -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/section_trigger"
+            android:textColor="@color/tv_accent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_selector"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnModeAccessibility"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="● Mode Accessibilité (Recommandé)"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="14sp" />
+
+                <Button
+                    android:id="@+id/btnModeButtonMapper"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="○ Mode Button Mapper"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layoutKeyAssignation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnAssignKey"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="@string/btn_assign_key"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/tvAssignedKeyLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:text="Touche : Non assignée"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvAssignKeyFeedback"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text=""
+                android:textColor="@color/tv_status_warning"
+                android:textSize="13sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Section 4 : Night Dimmer (Assombrissement Logiciel) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/section_dimmer"
+            android:textColor="@color/tv_accent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_selector"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <Button
+                android:id="@+id/btnDimmerToggle"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_button_selector"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="Assombrissement : DÉSACTIVÉ"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/layoutDimmerOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <!-- Dimmer Intensity -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dimmer_intensity_label"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+
+                        <Button
+                            android:id="@+id/btnDimmerIntensity"
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_button_selector"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
+                            android:text="@string/dimmer_intensity_medium"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <!-- Dimmer Trigger Mode -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/dimmer_mode_label"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+
+                        <Button
+                            android:id="@+id/btnDimmerMode"
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_button_selector"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
+                            android:text="@string/dimmer_mode_immediate"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnTestDimmer"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="16dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="@string/btn_test_dimmer"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Section 5 : Baisse de Volume Progressive -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/section_volume_fade"
+            android:textColor="@color/tv_accent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_selector"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <Button
+                android:id="@+id/btnVolumeFadeToggle"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_button_selector"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="Baisse de volume : DÉSACTIVÉE"
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/layoutVolumeFadeOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <!-- Volume Fade Trigger Mode -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/volume_fade_label"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+
+                        <Button
+                            android:id="@+id/btnVolumeFadeMode"
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_button_selector"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
+                            android:text="@string/volume_fade_mode_last_5min"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <!-- Restore Volume on Wake -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/volume_restore_label"
+                            android:textColor="@color/tv_text_secondary"
+                            android:textSize="13sp" />
+
+                        <Button
+                            android:id="@+id/btnRestoreVolume"
+                            android:layout_width="match_parent"
+                            android:layout_height="46dp"
+                            android:layout_marginTop="8dp"
+                            android:background="@drawable/bg_button_selector"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
+                            android:text="@string/volume_restore_yes"
+                            android:textColor="@color/tv_text_primary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btnTestVolumeFade"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="16dp"
+                    android:background="@drawable/bg_button_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:text="@string/btn_test_volume_fade"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Section 5 : Tests & Actions -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="12dp"
+            android:text="@string/section_tests"
+            android:textColor="@color/tv_accent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnSimulatePress"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginEnd="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_button_selector"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="@string/btn_simulate_press"
+                android:textColor="@color/tv_accent"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnTestSleep"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_button_selector"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="@string/btn_test_sleep"
+                android:textColor="@color/tv_status_warning"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- ADB Info Footer -->
+        <TextView
+            android:id="@+id/tvAdbHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:text="Tip : Sur Google TV, si les autorisations système sont masquées, utilisez ADB :\nadb shell appops set com.quicksleeptimer SYSTEM_ALERT_WINDOW allow"
+            android:textColor="@color/tv_text_secondary"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+</ScrollView>

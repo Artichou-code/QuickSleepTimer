@@ -1,0 +1,37 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base TV Theme -->
+    <style name="Theme.QuickSleepTimer" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/tv_background</item>
+        <item name="android:textColorPrimary">@color/tv_text_primary</item>
+        <item name="android:textColorSecondary">@color/tv_text_secondary</item>
+        <item name="colorAccent">@color/tv_accent</item>
+        <item name="colorPrimary">@color/tv_accent</item>
+        <item name="colorPrimaryDark">@color/tv_background</item>
+    </style>
+
+    <!-- Transparent Activity Theme (Zero disruption / zero flash) -->
+    <style name="Theme.QuickSleepTimer.Transparent" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowCloseOnTouchOutside">false</item>
+    </style>
+
+    <!-- Setup Activity Theme: Translucent window so fast trigger doesn't pause background video, but solid layout background when opened -->
+    <style name="Theme.QuickSleepTimer.Setup" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:textColorPrimary">@color/tv_text_primary</item>
+        <item name="android:textColorSecondary">@color/tv_text_secondary</item>
+        <item name="colorAccent">@color/tv_accent</item>
+        <item name="colorPrimary">@color/tv_accent</item>
+        <item name="colorPrimaryDark">@color/tv_background</item>
+    </style>
+</resources>

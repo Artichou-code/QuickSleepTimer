@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- TV Compatibility Features -->
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+
+    <!-- Permissions -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <application
+        android:allowBackup="true"
+        android:banner="@drawable/banner"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.QuickSleepTimer">
+
+        <!-- Fast Transparent Trigger Activity (Internal action trigger) -->
+        <activity
+            android:name=".TriggerActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher"
+            android:label="@string/app_name"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.QuickSleepTimer.Transparent">
+            <intent-filter>
+                <action android:name="com.quicksleeptimer.ACTION_TRIGGER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Configuration & Settings Screen for Android TV (Main Launcher Activity) -->
+        <activity
+            android:name=".SetupActivity"
+            android:banner="@drawable/banner"
+            android:exported="true"
+            android:icon="@drawable/ic_launcher"
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.quicksleeptimer.setup"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.QuickSleepTimer.Setup"
+            android:windowSoftInputMode="stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Foreground Countdown & Overlay Management Service -->
+        <service
+            android:name=".TimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="QuickSleepTimer - TV sleep countdown and overlay management service" />
+        </service>
+
+        <!-- Accessibility Service for Global Lock and Native Key Interception -->
+        <service
+            android:name=".SleepAccessibilityService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Receiver allowing internal TV apps like Blaze to request instant screen lock -->
+        <receiver
+            android:name=".LockScreenReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.quicksleeptimer.ACTION_LOCK_NOW" />
+                <action android:name="com.quicksleeptimer.ACTION_CANCEL_NOW" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>
