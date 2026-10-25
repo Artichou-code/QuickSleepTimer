@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV-00875A.svg)](https://android.com/tv/)
 [![API](https://img.shields.io/badge/API-28%2B%20%28Android%209%20to%2014%2B%29-green.svg)](#)
-[![Version](https://img.shields.io/badge/Version-1.2.2-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.0-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
 [![No Internet Permission](https://img.shields.io/badge/Privacy-100%25%20Offline%20%28No%20Internet%29-brightgreen.svg)](#transparence--vie-privée)
 
 [Français](#-français) | [English](#-english)

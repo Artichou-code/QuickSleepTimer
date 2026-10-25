@@ -15,6 +15,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -111,6 +112,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         prefsManager = PreferencesManager.getInstance(this)
         overlayManager = OverlayManager(this)
 
+        setupFocusAnimations()
         setupDurationControls()
         setupPermissionControls()
         setupTriggerModeControls()
@@ -351,10 +353,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         if (hasOverlay) {
             binding.tvOverlayStatus.text = getString(R.string.status_granted)
             binding.tvOverlayStatus.setTextColor(getColor(R.color.tv_status_ok))
+            binding.tvOverlayStatus.setBackgroundResource(R.drawable.bg_apple_badge_ok)
             binding.btnPermOverlay.text = "Gérer dans Paramètres ✓"
         } else {
             binding.tvOverlayStatus.text = getString(R.string.status_missing)
             binding.tvOverlayStatus.setTextColor(getColor(R.color.tv_status_warning))
+            binding.tvOverlayStatus.setBackgroundResource(R.drawable.bg_apple_badge_warn)
             binding.btnPermOverlay.text = "Autoriser la superposition"
         }
         // Always keep button clickable for D-Pad navigation and reconfiguration
@@ -365,10 +369,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         if (hasAccessibility) {
             binding.tvAccessibilityStatus.text = getString(R.string.status_granted)
             binding.tvAccessibilityStatus.setTextColor(getColor(R.color.tv_status_ok))
+            binding.tvAccessibilityStatus.setBackgroundResource(R.drawable.bg_apple_badge_ok)
             binding.btnPermAccessibility.text = "Gérer / Désactiver ✓"
         } else {
             binding.tvAccessibilityStatus.text = getString(R.string.status_missing)
             binding.tvAccessibilityStatus.setTextColor(getColor(R.color.tv_status_warning))
+            binding.tvAccessibilityStatus.setBackgroundResource(R.drawable.bg_apple_badge_warn)
             binding.btnPermAccessibility.text = "Activer dans Paramètres"
         }
         // Always keep button clickable for D-Pad navigation and reconfiguration
@@ -561,11 +567,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     private fun updateDimmerEnabledUi(enabled: Boolean) {
         if (enabled) {
-            binding.btnDimmerToggle.text = "Assombrissement : ACTIVÉ ✓"
+            binding.btnDimmerToggle.text = "ACTIVÉ ✓"
             binding.btnDimmerToggle.setTextColor(getColor(R.color.tv_status_ok))
             binding.layoutDimmerOptions.visibility = View.VISIBLE
         } else {
-            binding.btnDimmerToggle.text = "Assombrissement : DÉSACTIVÉ"
+            binding.btnDimmerToggle.text = "DÉSACTIVÉ"
             binding.btnDimmerToggle.setTextColor(getColor(R.color.tv_text_secondary))
             binding.layoutDimmerOptions.visibility = View.GONE
         }
@@ -617,12 +623,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     private fun updateVolumeFadeEnabledUi(enabled: Boolean) {
         if (enabled) {
-            binding.btnVolumeFadeToggle.text = "Baisse de volume : ACTIVÉE ✓"
+            binding.btnVolumeFadeToggle.text = "ACTIVÉ ✓"
             binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_status_ok))
             binding.layoutVolumeFadeOptions.visibility = View.VISIBLE
             checkAndDisplayVolumeRoutingStatus()
         } else {
-            binding.btnVolumeFadeToggle.text = "Baisse de volume : DÉSACTIVÉE"
+            binding.btnVolumeFadeToggle.text = "DÉSACTIVÉ"
             binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_text_secondary))
             binding.layoutVolumeFadeOptions.visibility = View.GONE
         }
@@ -671,11 +677,59 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     private fun refreshTimerStatusBadge() {
         if (TimerService.isRunning) {
             val remaining = TimerService.getRemainingMinutes()
-            binding.tvTimerStatusBadge.text = "● Actif : $remaining min restantes"
+            binding.tvTimerStatusBadge.text = "● Actif : $remaining min"
             binding.tvTimerStatusBadge.setTextColor(getColor(R.color.tv_status_ok))
+            binding.tvTimerStatusBadge.setBackgroundResource(R.drawable.bg_apple_badge_ok)
         } else {
-            binding.tvTimerStatusBadge.text = "○ Timer inactif"
+            binding.tvTimerStatusBadge.text = "Timer inactif"
             binding.tvTimerStatusBadge.setTextColor(getColor(R.color.tv_text_secondary))
+            binding.tvTimerStatusBadge.setBackgroundResource(R.drawable.bg_apple_badge_neutral)
+        }
+    }
+
+    // ==========================================
+    // TV D-PAD FOCUS ANIMATION (tvOS Effect)
+    // ==========================================
+
+    private fun setupFocusAnimations() {
+        val interactiveViews = listOf(
+            binding.btnInitialDuration,
+            binding.btnStepDuration,
+            binding.btnMaxDuration,
+            binding.btnDimmerToggle,
+            binding.btnDimmerIntensity,
+            binding.btnDimmerMode,
+            binding.btnTestDimmer,
+            binding.btnVolumeFadeToggle,
+            binding.btnVolumeFadeMode,
+            binding.btnRestoreVolume,
+            binding.btnTestVolumeFade,
+            binding.btnModeAccessibility,
+            binding.btnModeButtonMapper,
+            binding.btnAssignKey,
+            binding.btnPermOverlay,
+            binding.btnPermAccessibility,
+            binding.btnSimulatePress,
+            binding.btnTestSleep
+        )
+        for (view in interactiveViews) {
+            view.applyTvFocusScale()
+        }
+    }
+
+    private fun View.applyTvFocusScale(scale: Float = 1.04f) {
+        isFocusable = true
+        isFocusableInTouchMode = true
+        setOnFocusChangeListener { v, hasFocus ->
+            val targetScale = if (hasFocus) scale else 1.0f
+            val targetElevation = if (hasFocus) 8f else 0f
+            v.animate()
+                .scaleX(targetScale)
+                .scaleY(targetScale)
+                .translationZ(targetElevation)
+                .setDuration(160L)
+                .setInterpolator(DecelerateInterpolator(1.5f))
+                .start()
         }
     }
 

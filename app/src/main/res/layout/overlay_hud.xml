@@ -3,18 +3,18 @@
     android:id="@+id/hudRoot"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_hud_pill"
-    android:elevation="12dp"
+    android:background="@drawable/bg_apple_hud_pill"
+    android:elevation="14dp"
     android:gravity="center_vertical"
     android:orientation="horizontal">
 
     <ImageView
         android:id="@+id/hudIcon"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
         android:layout_marginEnd="14dp"
         android:contentDescription="@null"
-        android:src="@drawable/ic_moon" />
+        android:src="@drawable/ic_apple_moon" />
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -25,9 +25,11 @@
             android:id="@+id/hudTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.01"
             android:text="@string/hud_timer_started"
             android:textColor="@color/hud_text_title"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold" />
 
         <TextView
@@ -35,9 +37,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
+            android:fontFamily="sans-serif-medium"
             android:text=""
             android:textColor="@color/hud_text_subtitle"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:visibility="gone" />
 
     </LinearLayout>

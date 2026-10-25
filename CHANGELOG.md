@@ -6,6 +6,24 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.3.0] - 2026-10-25
+
+### 🎨 Refonte Complète UI/UX : Style Apple tvOS Dark & Store-Ready
+* **Ambiance Sombre & Reposante OLED (`#08090C`) :**
+  - Éradication des couleurs criardes au profit d'une palette nocturne feutrée et apaisante pour les yeux dans la chambre.
+  - Cartes modulaires Inset Grouped en verre fumé (`#151821`) avec bordures biseautées ultra-fines (`1px rgba(255,255,255,0.10)`).
+* **Micro-Animations D-Pad Signature tvOS (Focus Scale `1.04x`) :**
+  - Chaque bouton, capsule ou sélecteur grossit dynamiquement de 4% avec une élévation et un contour argenté doux lors de la navigation avec la télécommande.
+  - Rendu haptique fluide et réactif via un interpolateur de décélération doux.
+* **Pictogrammes Vectoriels Modernes Épurés (Style SF Symbols) :**
+  - Nouvelles icônes vectorielles harmonisées à trait fin 2dp : lune stylisée, chronomètre, atténuateur d'écran, haut-parleur nocturne, télécommande Apple-like et écusson de sécurité Play Protect.
+* **Sélecteurs Segmentés & Badges d'État Flottants :**
+  - Remplacement des boutons bruts par des sélecteurs segmentés pour les paliers (`10 min`, `+10 min`, `60 min`).
+  - Badges d'état dynamiques en forme de pilule (`Actif (OK)` vert émeraude doux, `Requis` ambre feutré).
+  - Pastille HUD flottante modernisée en verre fumé avec police compacte.
+
+---
+
 ## [1.2.2] - 2026-10-25
 
 ### ⚡ Performances & Zéro Pause Multimédia (Crunchyroll / ExoPlayer)
