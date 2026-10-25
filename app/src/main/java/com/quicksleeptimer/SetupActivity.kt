@@ -123,6 +123,13 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         setupActionButtons()
         observePreferences()
 
+        val versionName = try {
+            packageManager.getPackageInfo(packageName, 0).versionName
+        } catch (e: Exception) {
+            "1.3.6"
+        }
+        binding.tvAppVersion.text = "QuickSleepTimer v$versionName"
+
         // Default focus for TV remote
         binding.btnInitialDuration.requestFocus()
     }
@@ -231,6 +238,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         lifecycleScope.launch {
             prefsManager.assignedKeyCodeFlow.collectLatest { keyCode ->
                 updateAssignedKeyUi(keyCode)
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.assignedScanCodeFlow.collectLatest { _ ->
+                updateAssignedKeyUi(prefsManager.cachedAssignedKeyCode)
             }
         }
         lifecycleScope.launch {
@@ -493,6 +505,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     // ==========================================
 
     private fun setupTriggerModeControls() {
+        binding.btnTriggerXiaomi.setOnClickListener {
+            lifecycleScope.launch {
+                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_XIAOMI_ALL)
+            }
+        }
+
         binding.btnTriggerLive.setOnClickListener {
             lifecycleScope.launch {
                 prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
@@ -521,10 +539,14 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     }
 
     private fun updateTriggerTargetUi(target: String) {
+        val isXiaomi = (target == PreferencesManager.TRIGGER_XIAOMI_ALL)
         val isLive = (target == PreferencesManager.TRIGGER_LIVE)
         val isStar = (target == PreferencesManager.TRIGGER_STAR)
         val isNetflix = (target == PreferencesManager.TRIGGER_NETFLIX)
         val isCustom = (target == PreferencesManager.TRIGGER_CUSTOM)
+
+        binding.btnTriggerXiaomi.text = if (isXiaomi) "● Télécommande Xiaomi (Toutes)" else "○ Télécommande Xiaomi (Toutes)"
+        binding.btnTriggerXiaomi.setTextColor(getColor(if (isXiaomi) R.color.tv_text_primary else R.color.tv_text_secondary))
 
         binding.btnTriggerLive.text = if (isLive) "● Touche Live TV" else "○ Touche Live TV"
         binding.btnTriggerLive.setTextColor(getColor(if (isLive) R.color.tv_text_primary else R.color.tv_text_secondary))
@@ -536,6 +558,10 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         binding.btnTriggerNetflix.setTextColor(getColor(if (isNetflix) R.color.tv_text_primary else R.color.tv_text_secondary))
 
         when {
+            isXiaomi -> {
+                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Télécommande Xiaomi (Live, Netflix, Prime, Apps)"
+                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+            }
             isLive -> {
                 binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Touche Live TV (Xiaomi Mi Box)"
                 binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
@@ -550,7 +576,8 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             }
             isCustom -> {
                 val assignedKey = prefsManager.cachedAssignedKeyCode
-                val keyLabel = SleepAccessibilityService.getFriendlyKeyName(assignedKey)
+                val assignedScan = prefsManager.cachedAssignedScanCode
+                val keyLabel = SleepAccessibilityService.getFriendlyKeyName(assignedKey, assignedScan)
                 binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel"
                 binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
             }
@@ -560,8 +587,9 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     private fun updateAssignedKeyUi(keyCode: Int) {
         val currentTarget = prefsManager.cachedTriggerTarget
         if (currentTarget == PreferencesManager.TRIGGER_CUSTOM) {
-            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode)
-            binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel (Code $keyCode)"
+            val assignedScan = prefsManager.cachedAssignedScanCode
+            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode, assignedScan)
+            binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel"
             binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
         }
     }
@@ -611,7 +639,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     }
 
     // KeyAssignListener Callbacks
-    override fun onKeyAssigned(keyCode: Int) {
+    override fun onKeyAssigned(keyCode: Int, scanCode: Int) {
         runOnUiThread {
             cancelListeningRunnable?.let { mainHandler.removeCallbacks(it) }
             cancelListeningRunnable = null
@@ -619,7 +647,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             isListeningForKey = false
             SleepAccessibilityService.keyAssignListener = null
             binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
-            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode)
+            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode, scanCode)
             binding.tvAssignKeyFeedback.text = "✓ Touche assignée avec succès : $keyLabel"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE

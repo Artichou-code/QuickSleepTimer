@@ -45,6 +45,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Hardware Netflix Button Trampoline for Xiaomi Android TV -->
+        <activity
+            android:name=".NetflixInterceptActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:theme="@style/Theme.QuickSleepTimer.Transparent">
+            <intent-filter android:priority="999">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nflx" android:host="www.netflix.com" />
+            </intent-filter>
+        </activity>
+
         <!-- Configuration & Settings Screen for Android TV (Main Launcher Activity) -->
         <activity
             android:name=".SetupActivity"

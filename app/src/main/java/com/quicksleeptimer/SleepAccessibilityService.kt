@@ -25,6 +25,12 @@ class SleepAccessibilityService : AccessibilityService() {
         prefsManager = PreferencesManager.getInstance(this)
         instance = this
         Log.d(TAG, "SleepAccessibilityService created")
+
+        serviceScope.launch {
+            prefsManager.triggerTargetFlow.collect {
+                updateKeyFilterFlags()
+            }
+        }
     }
 
     override fun onServiceConnected() {
@@ -32,19 +38,25 @@ class SleepAccessibilityService : AccessibilityService() {
         instance = this
         Log.d(TAG, "SleepAccessibilityService connected and ready")
 
-        // Ensure key event filtering and window inspection are enabled
-        serviceInfo = serviceInfo?.apply {
-            flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
-                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-        } ?: AccessibilityServiceInfo().apply {
-            flags = AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
-                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
-            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-        }
+        updateKeyFilterFlags()
+
         lastForegroundPackage = getActivePackage()
         if (lastLegitimatePackage.isNullOrEmpty() && !isLiveTvPackage(lastForegroundPackage ?: "") && !isNetflixPackage(lastForegroundPackage ?: "")) {
             lastLegitimatePackage = lastForegroundPackage
         }
+    }
+
+    fun updateKeyFilterFlags() {
+        val currentFlags = (serviceInfo?.flags ?: 0)
+        val newFlags = currentFlags or
+                AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+
+        serviceInfo = (serviceInfo ?: AccessibilityServiceInfo()).apply {
+            flags = newFlags
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+        }
+        Log.d(TAG, "updateKeyFilterFlags: flags=$newFlags")
     }
 
     private var lastInterceptTime: Long = 0L
@@ -119,51 +131,57 @@ class SleepAccessibilityService : AccessibilityService() {
 
     private fun dismissInterceptedApp(targetPkg: String, appToRestore: String?) {
         serviceScope.launch {
-            val isTargetLauncher = isLauncherOrSettings(appToRestore)
-            Log.d(TAG, "dismissInterceptedApp: targetPkg=$targetPkg, restore=$appToRestore (isLauncher=$isTargetLauncher)")
+            Log.d(TAG, "dismissInterceptedApp: targetPkg=$targetPkg, restore=$appToRestore")
 
-            // Phase 1 (0ms): Always force HOME immediately to banish full-screen TV apps (Live TV / Netflix)
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            // Phase 1 (0ms): Dismiss modal / back out
+            performGlobalAction(GLOBAL_ACTION_BACK)
 
-            // If on launcher or dialog, BACK helps dismiss any prompt
-            if (isTargetLauncher || appToRestore.isNullOrEmpty()) {
-                performGlobalAction(GLOBAL_ACTION_BACK)
-            }
-
-            // Phase 2 (120ms): If user was in a legitimate app (e.g. VLC, YouTube, Blaze), restore it to the front
-            kotlinx.coroutines.delay(120)
-            if (!isTargetLauncher && !appToRestore.isNullOrEmpty()) {
+            // Phase 2 (80ms): Restore previous legitimate app or Projectivy
+            kotlinx.coroutines.delay(80)
+            if (!appToRestore.isNullOrEmpty() && appToRestore != "com.google.android.tvlauncher") {
                 restoreAppToFront(appToRestore)
             } else {
-                performGlobalAction(GLOBAL_ACTION_HOME)
+                restoreProjectivyOrHome()
             }
 
-            // Phase 3 (260ms): Catch any lingering modal dialogs (e.g. Google assisted sign-in) or check active window
-            kotlinx.coroutines.delay(140)
+            // Phase 3 (200ms): If target still active, dismiss again and restore
+            kotlinx.coroutines.delay(120)
             val currentPkg = getActivePackage()
             if (isLiveTvPackage(currentPkg ?: "") || isNetflixPackage(currentPkg ?: "") || currentPkg == "com.google.android.gms") {
-                Log.w(TAG, "Target still active ($currentPkg) at 260ms, forcing HOME + BACK")
-                performGlobalAction(GLOBAL_ACTION_HOME)
+                Log.w(TAG, "Target still active ($currentPkg) at 200ms, forcing BACK + restore")
                 performGlobalAction(GLOBAL_ACTION_BACK)
-                if (!isTargetLauncher && !appToRestore.isNullOrEmpty()) {
-                    kotlinx.coroutines.delay(100)
+                if (!appToRestore.isNullOrEmpty() && appToRestore != "com.google.android.tvlauncher") {
                     restoreAppToFront(appToRestore)
+                } else {
+                    restoreProjectivyOrHome()
                 }
             }
 
-            // Phase 4 (450ms): Clean up background processes so it doesn't consume TV RAM / audio
-            kotlinx.coroutines.delay(190)
-            try {
-                val am = getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
-                am?.killBackgroundProcesses(targetPkg)
-            } catch (e: Exception) {
-                Log.w(TAG, "killBackgroundProcesses failed: ${e.message}")
-            }
+            // Phase 4 (400ms): Target dismissal complete
+            kotlinx.coroutines.delay(200)
+            Log.d(TAG, "dismissInterceptedApp completed")
+        }
+    }
+
+    private fun restoreProjectivyOrHome() {
+        val projIntent = packageManager.getLaunchIntentForPackage("com.spocky.projengmenu")?.apply {
+            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        if (projIntent != null) {
+            startActivity(projIntent)
+        } else {
+            performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }
 
     private fun restoreAppToFront(pkg: String) {
         try {
+            if (pkg == "com.google.android.tvlauncher") {
+                restoreProjectivyOrHome()
+                return
+            }
             val launchIntent = packageManager.getLaunchIntentForPackage(pkg)?.apply {
                 flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
                         Intent.FLAG_ACTIVITY_NEW_TASK or
@@ -172,11 +190,11 @@ class SleepAccessibilityService : AccessibilityService() {
             if (launchIntent != null) {
                 startActivity(launchIntent)
             } else {
-                performGlobalAction(GLOBAL_ACTION_HOME)
+                restoreProjectivyOrHome()
             }
         } catch (e: Exception) {
             Log.w(TAG, "restoreAppToFront failed for $pkg: ${e.message}")
-            performGlobalAction(GLOBAL_ACTION_HOME)
+            restoreProjectivyOrHome()
         }
     }
 
@@ -198,9 +216,17 @@ class SleepAccessibilityService : AccessibilityService() {
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
+        val scanCode = event.scanCode
         val action = event.action
 
-        Log.d(TAG, "onKeyEvent: keyCode=$keyCode (${getFriendlyKeyName(keyCode)}), action=${if (action == KeyEvent.ACTION_DOWN) "DOWN" else "UP"}")
+        Log.d(TAG, "onKeyEvent INCOMING: keyCode=$keyCode, scanCode=$scanCode, action=$action, target=${prefsManager.cachedTriggerTarget}")
+
+        // 0. ABSOLUTE CRITICAL SHORT-CIRCUIT:
+        // Never delay, touch, or consume HOME key (Scancode 172 on Xiaomi Mi Box)
+        // Passes straight through to Projectivy Launcher in < 0.01ms
+        if (keyCode in HOME_KEYCODES || scanCode in HOME_SCANCODES) {
+            return false
+        }
 
         // 1. Key Learning / Assignation Mode (from SetupActivity)
         if (isListeningForKeyAssignation) {
@@ -211,54 +237,78 @@ class SleepAccessibilityService : AccessibilityService() {
                     keyAssignListener?.onKeyListeningCancelled()
                     return true
                 } else if (isForbiddenKey(keyCode)) {
-                    Log.w(TAG, "Forbidden key ignored during assignation: $keyCode")
+                    Log.w(TAG, "Forbidden key ignored during assignation: keyCode=$keyCode, scanCode=$scanCode")
                     keyAssignListener?.onForbiddenKeyDetected(keyCode)
                     return true // Consume so it doesn't navigate away
                 } else {
-                    Log.d(TAG, "Valid key assigned: $keyCode (${getFriendlyKeyName(keyCode)})")
+                    Log.d(TAG, "Valid key assigned: keyCode=$keyCode, scanCode=$scanCode (${getFriendlyKeyName(keyCode, scanCode)})")
                     isListeningForKeyAssignation = false
                     serviceScope.launch {
                         prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_CUSTOM)
-                        prefsManager.setAssignedKeyCode(keyCode)
+                        prefsManager.setAssignedKey(keyCode, scanCode)
                     }
-                    keyAssignListener?.onKeyAssigned(keyCode)
+                    keyAssignListener?.onKeyAssigned(keyCode, scanCode)
                     return true // Consume event
                 }
             }
             return true
         }
 
-        // 2. Regular Native Trigger Interception (100% Zero Activity / Zero Pause Guarantee)
+        // 2. Hardware Native Trigger Interception (Zero Launch / Zero Pause / Zero Glitch)
         val triggerTarget = prefsManager.cachedTriggerTarget
         val assignedKey = prefsManager.cachedAssignedKeyCode
+        val assignedScan = prefsManager.cachedAssignedScanCode
 
         val isTargetKey = when (triggerTarget) {
-            PreferencesManager.TRIGGER_LIVE -> (keyCode in LIVE_KEYCODES)
-            PreferencesManager.TRIGGER_NETFLIX -> (keyCode in NETFLIX_KEYCODES)
-            PreferencesManager.TRIGGER_CUSTOM -> (assignedKey != PreferencesManager.DEFAULT_KEYCODE && keyCode == assignedKey)
-            else -> (keyCode == KEYCODE_MACRO_1 || (assignedKey != PreferencesManager.DEFAULT_KEYCODE && keyCode == assignedKey))
+            PreferencesManager.TRIGGER_LIVE -> {
+                (keyCode in LIVE_KEYCODES || scanCode in LIVE_SCANCODES)
+            }
+            PreferencesManager.TRIGGER_NETFLIX -> {
+                (keyCode in NETFLIX_KEYCODES || scanCode in NETFLIX_SCANCODES)
+            }
+            PreferencesManager.TRIGGER_XIAOMI_ALL -> {
+                (keyCode in XIAOMI_ALL_KEYCODES || scanCode in XIAOMI_ALL_SCANCODES)
+            }
+            PreferencesManager.TRIGGER_CUSTOM -> {
+                (assignedKey > 0 && keyCode == assignedKey) || (assignedScan > 0 && scanCode == assignedScan)
+            }
+            else -> {
+                // TRIGGER_STAR (Google TV Streamer Star button is keyCode 313)
+                (keyCode == KEYCODE_MACRO_1 || keyCode == 313) ||
+                (assignedKey > 0 && keyCode == assignedKey) ||
+                (assignedScan > 0 && scanCode == assignedScan)
+            }
         }
 
         if (isTargetKey) {
             if (action == KeyEvent.ACTION_DOWN) {
                 val activePkg = getActivePackage()
                 val isOnLauncher = isLauncherOrSettings(activePkg)
+                Log.d(TAG, "Hardware key intercepted: keyCode=$keyCode, scanCode=$scanCode (${getFriendlyKeyName(keyCode, scanCode)}), isOnLauncher=$isOnLauncher (pkg=$activePkg)")
 
                 if (isOnLauncher) {
-                    Log.d(TAG, "Native key intercepted on launcher ($activePkg) -> Opening Settings Activity")
+                    // User is on Launcher (Projectivy, TV Launcher, etc.) or Settings -> Open QuickSleepTimer Settings!
+                    Log.d(TAG, "Target key on launcher -> Opening SetupActivity")
                     val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP
                         putExtra("open_settings", true)
                     }
                     startActivity(setupIntent)
                 } else {
-                    Log.d(TAG, "Native key intercepted in app ($activePkg) -> Triggering Sleep Timer with ZERO Activity")
+                    // User is inside an app (Crunchyroll, VLC, SmartTube, etc.) -> Trigger or increment Sleep Timer!
+                    Log.d(TAG, "Target key in app -> Triggering Sleep Timer HUD overlay")
                     val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                     val wasPlaying = audioManager?.isMusicActive ?: false
-                    TimerService.startOrIncrement(applicationContext, wasMusicActive = wasPlaying || !activePkg.isNullOrEmpty())
+                    TimerService.startOrIncrement(
+                        applicationContext,
+                        wasMusicActive = wasPlaying || !activePkg.isNullOrEmpty()
+                    )
                 }
             }
-            return true // Consume event
+            // Consume BOTH ACTION_DOWN and ACTION_UP completely, identical to Button Mapper's pref_alt_buttonmethod!
+            return true
         }
 
         return super.onKeyEvent(event)
@@ -312,35 +362,45 @@ class SleepAccessibilityService : AccessibilityService() {
 
         @Volatile
         var isListeningForKeyAssignation: Boolean = false
+            set(value) {
+                field = value
+                instance?.updateKeyFilterFlags()
+            }
 
         var keyAssignListener: KeyAssignListener? = null
 
+        val HOME_KEYCODES = setOf(KeyEvent.KEYCODE_HOME, 3)
+        val HOME_SCANCODES = setOf(172)
+
         interface KeyAssignListener {
-            fun onKeyAssigned(keyCode: Int)
+            fun onKeyAssigned(keyCode: Int, scanCode: Int = 0)
             fun onAppTriggerAssigned(label: String, target: String)
             fun onForbiddenKeyDetected(keyCode: Int)
             fun onKeyListeningCancelled()
         }
 
+        val LIVE_SCANCODES = setOf(580, 170, 171, 173, 183, 401)
         val LIVE_KEYCODES = setOf(
             KeyEvent.KEYCODE_TV,          // 170
-            KeyEvent.KEYCODE_GUIDE,       // 172
             KeyEvent.KEYCODE_WINDOW,      // 171
             KeyEvent.KEYCODE_DVR,         // 173
             KeyEvent.KEYCODE_ALL_APPS,    // 284
-            KeyEvent.KEYCODE_BUTTON_2,    // 97
-            KeyEvent.KEYCODE_BUTTON_3,    // 98
-            KeyEvent.KEYCODE_BUTTON_4,    // 99
-            170, 171, 172, 173, 183, 284, 96, 97, 98, 99
+            170, 171, 173, 183, 284
         )
 
+        val NETFLIX_SCANCODES = setOf(393)
         val NETFLIX_KEYCODES = setOf(
+            1001,                         // Xiaomi / Amlogic vendor Netflix key
             KeyEvent.KEYCODE_BUTTON_3,    // 98
             KeyEvent.KEYCODE_BUTTON_4,    // 99
             KeyEvent.KEYCODE_APP_SWITCH,  // 187
-            KeyEvent.KEYCODE_BUTTON_2,    // 97
-            98, 99, 187, 284
+            98, 99, 187
         )
+
+        // All Xiaomi remote dedicated shortcut buttons:
+        // Live/Apps (284/580), Netflix (1001/393), Prime Video (97/399), YouTube (99/400), Mi/Apps (98/401)
+        val XIAOMI_ALL_KEYCODES = LIVE_KEYCODES + NETFLIX_KEYCODES + setOf(97, 98, 99, 1001)
+        val XIAOMI_ALL_SCANCODES = LIVE_SCANCODES + NETFLIX_SCANCODES + setOf(393, 399, 400, 401, 580)
 
         fun isLiveTvPackage(pkg: String): Boolean {
             if (pkg.isEmpty()) return false
@@ -386,17 +446,24 @@ class SleepAccessibilityService : AccessibilityService() {
             return keyCode in FORBIDDEN_KEYCODES
         }
 
-        fun getFriendlyKeyName(keyCode: Int): String {
+        fun getFriendlyKeyName(keyCode: Int, scanCode: Int = 0): String {
+            if (scanCode == 393 || keyCode == 1001) return "Bouton Netflix (1001/393)"
+            if (scanCode == 399 || keyCode == 97) return "Bouton Prime Video (97/399)"
+            if (scanCode == 400 || keyCode == 99) return "Bouton YouTube (99/400)"
+            if (scanCode == 401 || keyCode == 98) return "Bouton Apps Xiaomi (98/401)"
+            if (scanCode == 580 || keyCode == 284) return "Bouton Live / Apps (284/580)"
+
             return when (keyCode) {
-                KEYCODE_MACRO_1 -> "Bouton Étoile (★)"
-                KeyEvent.KEYCODE_TV -> "Touche Live / TV"
+                KEYCODE_MACRO_1, 313 -> "Bouton Étoile (★)"
+                KeyEvent.KEYCODE_TV, 170 -> "Touche Live / TV"
                 KeyEvent.KEYCODE_GUIDE -> "Touche Guide / EPG"
-                KeyEvent.KEYCODE_DVR -> "Touche DVR / Enregistrement"
-                KeyEvent.KEYCODE_WINDOW -> "Touche Live / TV Window"
-                KeyEvent.KEYCODE_BUTTON_1 -> "Bouton Personnalisé 1"
-                KeyEvent.KEYCODE_BUTTON_2 -> "Bouton Personnalisé 2"
-                KeyEvent.KEYCODE_BUTTON_3 -> "Bouton App (Netflix/Live)"
-                KeyEvent.KEYCODE_BUTTON_4 -> "Bouton App (Prime/VOD)"
+                KeyEvent.KEYCODE_DVR, 173 -> "Touche DVR / Enregistrement"
+                KeyEvent.KEYCODE_WINDOW, 171 -> "Touche Live / TV Window"
+                KeyEvent.KEYCODE_ALL_APPS, 284 -> "Touche Apps / Live"
+                KeyEvent.KEYCODE_BUTTON_1, 96 -> "Bouton Personnalisé 1"
+                KeyEvent.KEYCODE_BUTTON_2, 97 -> "Bouton Prime Video"
+                KeyEvent.KEYCODE_BUTTON_3, 98 -> "Bouton Netflix / Apps"
+                KeyEvent.KEYCODE_BUTTON_4, 99 -> "Bouton YouTube / VOD"
                 KeyEvent.KEYCODE_PROG_RED -> "Touche Rouge (Raccourci TV)"
                 KeyEvent.KEYCODE_PROG_GREEN -> "Touche Verte (Raccourci TV)"
                 KeyEvent.KEYCODE_PROG_YELLOW -> "Touche Jaune (Raccourci TV)"
@@ -405,8 +472,16 @@ class SleepAccessibilityService : AccessibilityService() {
                 KeyEvent.KEYCODE_INFO -> "Touche Info"
                 KeyEvent.KEYCODE_SEARCH -> "Touche Recherche"
                 else -> {
-                    val raw = KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
-                    if (raw.startsWith("Unknown", ignoreCase = true)) "Touche $keyCode" else raw
+                    if (scanCode > 0 && (keyCode <= 0 || keyCode == KeyEvent.KEYCODE_UNKNOWN)) {
+                        "Touche Scancode $scanCode"
+                    } else {
+                        val raw = KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+                        if (raw.startsWith("Unknown", ignoreCase = true)) {
+                            if (scanCode > 0) "Touche (Code $keyCode, Scan $scanCode)" else "Touche $keyCode"
+                        } else {
+                            raw
+                        }
+                    }
                 }
             }
         }
