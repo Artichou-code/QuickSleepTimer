@@ -42,6 +42,9 @@ class SleepAccessibilityService : AccessibilityService() {
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
         }
         lastForegroundPackage = getActivePackage()
+        if (lastLegitimatePackage.isNullOrEmpty() && !isLiveTvPackage(lastForegroundPackage ?: "") && !isNetflixPackage(lastForegroundPackage ?: "")) {
+            lastLegitimatePackage = lastForegroundPackage
+        }
     }
 
     private var lastInterceptTime: Long = 0L
@@ -50,9 +53,18 @@ class SleepAccessibilityService : AccessibilityService() {
         if (event == null) return
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
+            val className = event.className?.toString()
+
+            val isTargetOrAux = isLiveTvPackage(pkg) || isNetflixPackage(pkg) || isAuxiliaryDialog(pkg, className)
+
             if (pkg.isNotEmpty() && pkg != packageName && pkg != "android") {
                 lastForegroundPackage = pkg
-                Log.d(TAG, "Foreground window package changed to: $pkg")
+                if (!isTargetOrAux) {
+                    lastLegitimatePackage = pkg
+                    Log.d(TAG, "Foreground window package changed to legitimate app: $pkg")
+                } else {
+                    Log.d(TAG, "Target or auxiliary window detected: $pkg ($className)")
+                }
             }
 
             // 1. Learning Mode : If user presses a hardcoded button (Live or Netflix) that forces app launch
@@ -60,16 +72,16 @@ class SleepAccessibilityService : AccessibilityService() {
                 if (isLiveTvPackage(pkg)) {
                     Log.d(TAG, "Live TV app ($pkg) launched during key assignation -> Assigning TRIGGER_LIVE")
                     isListeningForKeyAssignation = false
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    dismissInterceptedApp(pkg, packageName)
                     serviceScope.launch {
                         prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
                     }
-                    keyAssignListener?.onAppTriggerAssigned("Touche Live TV (Xiaomi)", PreferencesManager.TRIGGER_LIVE)
+                    keyAssignListener?.onAppTriggerAssigned("Touche Live TV", PreferencesManager.TRIGGER_LIVE)
                     return
                 } else if (isNetflixPackage(pkg)) {
                     Log.d(TAG, "Netflix app ($pkg) launched during key assignation -> Assigning TRIGGER_NETFLIX")
                     isListeningForKeyAssignation = false
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    dismissInterceptedApp(pkg, packageName)
                     serviceScope.launch {
                         prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_NETFLIX)
                     }
@@ -85,16 +97,86 @@ class SleepAccessibilityService : AccessibilityService() {
 
             if (shouldIntercept) {
                 val now = android.os.SystemClock.uptimeMillis()
-                if (now - lastInterceptTime > 1200L) {
+                if (now - lastInterceptTime > 400L) {
                     lastInterceptTime = now
-                    Log.d(TAG, "Autonomous interception of $pkg ($currentTarget)! Closing app and triggering Sleep Timer")
-                    // Instantly close the hardcoded app so the user stays on their video/stream
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    val targetAppToRestore = lastLegitimatePackage
+                    Log.d(TAG, "Autonomous interception of $pkg ($currentTarget)! Restoring: $targetAppToRestore and triggering Sleep Timer")
+                    
+                    // Immediately trigger Sleep Timer
                     val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                     val wasPlaying = audioManager?.isMusicActive ?: false
-                    TimerService.startOrIncrement(applicationContext, wasMusicActive = wasPlaying)
+                    TimerService.startOrIncrement(
+                        applicationContext,
+                        wasMusicActive = wasPlaying || (!targetAppToRestore.isNullOrEmpty() && !isLauncherOrSettings(targetAppToRestore))
+                    )
+
+                    // Multi-stage dismissal and window restore
+                    dismissInterceptedApp(pkg, targetAppToRestore)
                 }
             }
+        }
+    }
+
+    private fun dismissInterceptedApp(targetPkg: String, appToRestore: String?) {
+        serviceScope.launch {
+            val isTargetLauncher = isLauncherOrSettings(appToRestore)
+            Log.d(TAG, "dismissInterceptedApp: targetPkg=$targetPkg, restore=$appToRestore (isLauncher=$isTargetLauncher)")
+
+            // Phase 1 (0ms): Always force HOME immediately to banish full-screen TV apps (Live TV / Netflix)
+            performGlobalAction(GLOBAL_ACTION_HOME)
+
+            // If on launcher or dialog, BACK helps dismiss any prompt
+            if (isTargetLauncher || appToRestore.isNullOrEmpty()) {
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            }
+
+            // Phase 2 (120ms): If user was in a legitimate app (e.g. VLC, YouTube, Blaze), restore it to the front
+            kotlinx.coroutines.delay(120)
+            if (!isTargetLauncher && !appToRestore.isNullOrEmpty()) {
+                restoreAppToFront(appToRestore)
+            } else {
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
+
+            // Phase 3 (260ms): Catch any lingering modal dialogs (e.g. Google assisted sign-in) or check active window
+            kotlinx.coroutines.delay(140)
+            val currentPkg = getActivePackage()
+            if (isLiveTvPackage(currentPkg ?: "") || isNetflixPackage(currentPkg ?: "") || currentPkg == "com.google.android.gms") {
+                Log.w(TAG, "Target still active ($currentPkg) at 260ms, forcing HOME + BACK")
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                performGlobalAction(GLOBAL_ACTION_BACK)
+                if (!isTargetLauncher && !appToRestore.isNullOrEmpty()) {
+                    kotlinx.coroutines.delay(100)
+                    restoreAppToFront(appToRestore)
+                }
+            }
+
+            // Phase 4 (450ms): Clean up background processes so it doesn't consume TV RAM / audio
+            kotlinx.coroutines.delay(190)
+            try {
+                val am = getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+                am?.killBackgroundProcesses(targetPkg)
+            } catch (e: Exception) {
+                Log.w(TAG, "killBackgroundProcesses failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun restoreAppToFront(pkg: String) {
+        try {
+            val launchIntent = packageManager.getLaunchIntentForPackage(pkg)?.apply {
+                flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            if (launchIntent != null) {
+                startActivity(launchIntent)
+            } else {
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "restoreAppToFront failed for $pkg: ${e.message}")
+            performGlobalAction(GLOBAL_ACTION_HOME)
         }
     }
 
@@ -194,12 +276,19 @@ class SleepAccessibilityService : AccessibilityService() {
         var lastForegroundPackage: String? = null
             private set
 
+        @Volatile
+        var lastLegitimatePackage: String? = null
+            private set
+
         fun getActivePackage(): String? {
             try {
                 val root = instance?.rootInActiveWindow
                 val pkg = root?.packageName?.toString()
                 if (!pkg.isNullOrEmpty() && pkg != "com.quicksleeptimer" && pkg != "android") {
                     lastForegroundPackage = pkg
+                    if (!isLiveTvPackage(pkg) && !isNetflixPackage(pkg) && pkg != "com.google.android.gms") {
+                        lastLegitimatePackage = pkg
+                    }
                     return pkg
                 }
             } catch (e: Exception) {
@@ -234,29 +323,46 @@ class SleepAccessibilityService : AccessibilityService() {
         }
 
         val LIVE_KEYCODES = setOf(
-            KeyEvent.KEYCODE_TV,
-            KeyEvent.KEYCODE_GUIDE,
-            KeyEvent.KEYCODE_WINDOW,
-            KeyEvent.KEYCODE_DVR,
-            170, 171, 172, 173, 183
+            KeyEvent.KEYCODE_TV,          // 170
+            KeyEvent.KEYCODE_GUIDE,       // 172
+            KeyEvent.KEYCODE_WINDOW,      // 171
+            KeyEvent.KEYCODE_DVR,         // 173
+            KeyEvent.KEYCODE_ALL_APPS,    // 284
+            KeyEvent.KEYCODE_BUTTON_2,    // 97
+            KeyEvent.KEYCODE_BUTTON_3,    // 98
+            KeyEvent.KEYCODE_BUTTON_4,    // 99
+            170, 171, 172, 173, 183, 284, 96, 97, 98, 99
         )
 
         val NETFLIX_KEYCODES = setOf(
-            KeyEvent.KEYCODE_BUTTON_3,
-            KeyEvent.KEYCODE_BUTTON_4,
-            KeyEvent.KEYCODE_APP_SWITCH,
-            98, 99
+            KeyEvent.KEYCODE_BUTTON_3,    // 98
+            KeyEvent.KEYCODE_BUTTON_4,    // 99
+            KeyEvent.KEYCODE_APP_SWITCH,  // 187
+            KeyEvent.KEYCODE_BUTTON_2,    // 97
+            98, 99, 187, 284
         )
 
         fun isLiveTvPackage(pkg: String): Boolean {
+            if (pkg.isEmpty()) return false
             return pkg == "com.google.android.tv" ||
                     pkg == "com.mitv.tvhome.michannel" ||
+                    pkg == "com.mitv.tvhome.atv" ||
                     pkg == "com.android.tv" ||
-                    pkg.contains("livechannels", ignoreCase = true)
+                    pkg.contains("livechannels", ignoreCase = true) ||
+                    pkg.contains("tvhome", ignoreCase = true) ||
+                    pkg.contains("michannel", ignoreCase = true)
         }
 
         fun isNetflixPackage(pkg: String): Boolean {
+            if (pkg.isEmpty()) return false
             return pkg == "com.netflix.ninja" || pkg.contains("netflix", ignoreCase = true)
+        }
+
+        fun isAuxiliaryDialog(pkg: String, className: String?): Boolean {
+            if (pkg == "com.google.android.gms" && className?.contains("assistedsignin", ignoreCase = true) == true) {
+                return true
+            }
+            return false
         }
 
         // System-critical keys protected from assignment (Ajustement 1)
