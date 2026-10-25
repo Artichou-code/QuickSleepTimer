@@ -6,6 +6,22 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.2.1] - 2026-10-25
+
+### ✨ Améliorations & Corrections Audio
+* **Détection du statut HDMI de contrôle du volume (IR vs Numérique) :**
+  - Ajout d'un indicateur temps réel dans les paramètres vérifiant si la sortie HDMI est en mode fixe (Infrarouge direct vers la TV) ou variable (`Google TV Streamer`).
+  - Alerte explicative guidant l'utilisateur pour activer le contrôle logiciel du volume dans les réglages système de Google TV.
+* **Piste musicale de test intégrée — Casse-Noisette (Tchaïkovski) :**
+  - Intégration du thème de *La Danse de la Fée Dragée* de Piotr Ilitch Tchaïkovski (1892), dans le domaine public mondial.
+  - Synthèse acoustique numérique haute précision du timbre de la célesta et des cordes en pizzicato, sans aucun droit d'interprétation tiers et avec un poids plume dans l'APK.
+* **Simulation de baisse de volume sur 30 secondes avec arrêt interactif :**
+  - La simulation passe à 30 secondes complètes pour apprécier pleinement le fondu progressif vers zéro.
+  - Bascule dynamique du bouton en `ARRÊTER LE TEST DU VOLUME ⏹` (avec conservation automatique du focus D-Pad).
+  - Possibilité d'interrompre le test à tout moment via un second appui ou via la touche `Retour (Back)` de la télécommande, restaurant instantanément le volume initial.
+
+---
+
 ## [1.2.0] - 2026-10-25
 
 ### ✨ Nouvelles Fonctionnalités & Améliorations Majeures
