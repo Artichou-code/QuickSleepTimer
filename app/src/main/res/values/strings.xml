@@ -51,7 +51,8 @@
     <string name="volume_fade_mode_last_5min">5 dernières minutes (Recommandé)</string>
     <string name="volume_fade_mode_last_10min">10 dernières minutes</string>
     <string name="volume_fade_mode_full">Toute la durée du timer</string>
-    <string name="btn_test_volume_fade">Tester la baisse de volume (simulation 10s)</string>
+    <string name="btn_test_volume_fade">Tester la baisse de volume (simulation 30s)</string>
+    <string name="btn_stop_volume_fade">Arrêter le test du volume ⏹</string>
     <string name="volume_restore_label">Restaurer le volume au réveil :</string>
     <string name="volume_restore_yes">OUI (Volume initial restauré)</string>
     <string name="volume_restore_no">NON (Volume reste coupé)</string>

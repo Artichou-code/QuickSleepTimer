@@ -146,6 +146,9 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     override fun onStop() {
         super.onStop()
+        if (TimerService.isTestingVolumeFade) {
+            TimerService.stopVolumeFadeTest(this)
+        }
         // Ensure settings UI doesn't linger in background task stack when leaving to other apps
         if (!isFinishing && ::binding.isInitialized) {
             finish()
@@ -246,6 +249,18 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                     getString(R.string.volume_restore_yes)
                 } else {
                     getString(R.string.volume_restore_no)
+                }
+            }
+        }
+        lifecycleScope.launch {
+            TimerService.isTestingVolumeFadeFlow.collectLatest { isTesting ->
+                if (isTesting) {
+                    binding.btnTestVolumeFade.text = getString(R.string.btn_stop_volume_fade)
+                    binding.btnTestVolumeFade.setTextColor(getColor(R.color.tv_status_warning))
+                    binding.btnTestVolumeFade.requestFocus()
+                } else {
+                    binding.btnTestVolumeFade.text = getString(R.string.btn_test_volume_fade)
+                    binding.btnTestVolumeFade.setTextColor(getColor(R.color.tv_text_primary))
                 }
             }
         }
@@ -466,6 +481,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     // In case SetupActivity has focus when key is pressed
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_BACK && TimerService.isTestingVolumeFade) {
+            TimerService.stopVolumeFadeTest(this)
+            return true
+        }
+
         if (isListeningForKey && event.action == KeyEvent.ACTION_DOWN) {
             val keyCode = event.keyCode
             if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -562,7 +582,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
 
         binding.btnTestVolumeFade.setOnClickListener {
-            TimerService.testVolumeFade(this)
+            if (TimerService.isTestingVolumeFade) {
+                TimerService.stopVolumeFadeTest(this)
+            } else {
+                TimerService.testVolumeFade(this)
+            }
         }
     }
 

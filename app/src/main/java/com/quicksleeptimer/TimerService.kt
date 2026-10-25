@@ -22,9 +22,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.roundToInt
 
 class TimerService : Service() {
 
@@ -83,6 +87,9 @@ class TimerService : Service() {
                     startForegroundNotification(1)
                 }
                 testVolumeFade()
+            }
+            ACTION_STOP_TEST_VOLUME_FADE -> {
+                stopVolumeFadeTestInternal(showInterruptedHud = true)
             }
         }
 
@@ -607,11 +614,19 @@ class TimerService : Service() {
         }
     }
 
+    private var testOriginalVol: Int? = null
+
     private fun testVolumeFade() {
         testVolumeFadeJob?.cancel()
+        _isTestingVolumeFadeFlow.value = true
+
         testVolumeFadeJob = serviceScope.launch {
-            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return@launch
+            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: run {
+                _isTestingVolumeFadeFlow.value = false
+                return@launch
+            }
             val originalVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+            testOriginalVol = originalVol
 
             // Si le volume actuel est trop bas pour entendre le test, on démarre à un niveau sonore confortable
             val testStartVol = if (originalVol < 6) 12 else originalVol
@@ -638,24 +653,31 @@ class TimerService : Service() {
             try {
                 overlayManager.showHud(
                     title = "Test Baisse Volume (${testStartVol})",
-                    subtitle = "🎵 Tchaïkovski — Casse-Noisette (Fée Dragée)",
-                    autoDismissMs = 3800L
+                    subtitle = "🎵 Tchaïkovski — Casse-Noisette (Simulation 30s)",
+                    autoDismissMs = 4000L
                 )
 
-                val steps = 8
-                val stepVol = testStartVol.toFloat() / steps
+                val totalDurationSec = 30
+                val stepVol = testStartVol.toFloat() / totalDurationSec
 
-                for (i in 1..steps) {
+                for (sec in 1..totalDurationSec) {
                     delay(1000L)
-                    val v = (testStartVol - (i * stepVol)).toInt().coerceAtLeast(0)
+                    val v = (testStartVol - (sec * stepVol)).roundToInt().coerceAtLeast(0)
                     try {
                         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0)
+                        Log.d(TAG, "Test volume sec $sec/$totalDurationSec: vol=$v")
                     } catch (e: Exception) {
                         Log.w(TAG, "Error adjusting test volume: ${e.message}")
                     }
                 }
 
-                delay(1200L)
+                delay(1000L)
+
+                overlayManager.showHud(
+                    title = "Test terminé ✓",
+                    subtitle = "Volume restauré au niveau initial ($originalVol)",
+                    autoDismissMs = 4000L
+                )
             } finally {
                 try {
                     mediaPlayer?.stop()
@@ -664,26 +686,40 @@ class TimerService : Service() {
 
                 try {
                     audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, originalVol, 0)
+                    Log.d(TAG, "testVolumeFade restored original volume: $originalVol")
                 } catch (e: Exception) {
                     Log.w(TAG, "Error restoring original volume: ${e.message}")
                 }
-            }
 
-            overlayManager.showHud(
-                title = "Test terminé ✓",
-                subtitle = "Volume restauré au niveau initial ($originalVol)",
-                autoDismissMs = 4000L
-            )
+                _isTestingVolumeFadeFlow.value = false
+                testOriginalVol = null
 
-            if (currentState == TimerState.INACTIVE) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                } else {
-                    @Suppress("DEPRECATION")
-                    stopForeground(true)
+                if (currentState == TimerState.INACTIVE) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        stopForeground(true)
+                    }
+                    stopSelf()
                 }
-                stopSelf()
             }
+        }
+    }
+
+    private fun stopVolumeFadeTestInternal(showInterruptedHud: Boolean = true) {
+        val wasRunning = testVolumeFadeJob?.isActive == true
+        val restoredVol = testOriginalVol
+        testVolumeFadeJob?.cancel()
+        testVolumeFadeJob = null
+        _isTestingVolumeFadeFlow.value = false
+
+        if (wasRunning && showInterruptedHud) {
+            overlayManager.showHud(
+                title = "Test interrompu ⏹",
+                subtitle = if (restoredVol != null) "Volume restauré au niveau initial ($restoredVol)" else "Test arrêté",
+                autoDismissMs = 3000L
+            )
         }
     }
 
@@ -801,7 +837,13 @@ class TimerService : Service() {
         const val ACTION_CANCEL = "com.quicksleeptimer.ACTION_CANCEL"
         const val ACTION_TEST_SLEEP = "com.quicksleeptimer.ACTION_TEST_SLEEP"
         const val ACTION_TEST_VOLUME_FADE = "com.quicksleeptimer.ACTION_TEST_VOLUME_FADE"
+        const val ACTION_STOP_TEST_VOLUME_FADE = "com.quicksleeptimer.ACTION_STOP_TEST_VOLUME_FADE"
         const val EXTRA_WAS_PLAYING = "extra_was_playing"
+
+        private val _isTestingVolumeFadeFlow = MutableStateFlow(false)
+        val isTestingVolumeFadeFlow: StateFlow<Boolean> = _isTestingVolumeFadeFlow.asStateFlow()
+        val isTestingVolumeFade: Boolean
+            get() = _isTestingVolumeFadeFlow.value
 
         @Volatile
         var instance: TimerService? = null
@@ -856,6 +898,13 @@ class TimerService : Service() {
             } else {
                 context.startService(intent)
             }
+        }
+
+        fun stopVolumeFadeTest(context: Context) {
+            val intent = Intent(context, TimerService::class.java).apply {
+                action = ACTION_STOP_TEST_VOLUME_FADE
+            }
+            context.startService(intent)
         }
     }
 }
