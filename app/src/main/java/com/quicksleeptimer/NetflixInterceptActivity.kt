@@ -16,11 +16,19 @@ import android.util.Log
  * This activity handles that intent in < 1 millisecond with zero visual flicker:
  * - If user is on the Launcher or Settings: redirects to SetupActivity (Settings screen).
  * - If user is inside an app (Crunchyroll, VLC, SmartTube, etc.): triggers Sleep Timer HUD without leaving or pausing the app.
+ * - If the active trigger is NOT Netflix: ignores and finishes immediately so other buttons are never blocked.
  */
 class NetflixInterceptActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val prefs = PreferencesManager.getInstance(this)
+        if (prefs.cachedTriggerTarget != PreferencesManager.TRIGGER_NETFLIX) {
+            Log.d(TAG, "Netflix button pressed but active triggerTarget is ${prefs.cachedTriggerTarget} -> Ignoring")
+            finish()
+            return
+        }
 
         val activePkg = SleepAccessibilityService.lastLegitimatePackage ?: SleepAccessibilityService.getActivePackage()
         val isOnLauncher = SleepAccessibilityService.isLauncherOrSettings(activePkg)

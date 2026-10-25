@@ -34,6 +34,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     private var isListeningForKey = false
     private var cancelListeningRunnable: Runnable? = null
+    private var allowBackPressTime = 0L
 
     private val durationOptions = listOf(5, 10, 15, 20, 30, 45, 60)
     private val stepOptions = listOf(5, 10, 15, 20, 30)
@@ -85,7 +86,8 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
             )
             window.setBackgroundDrawableResource(android.R.color.transparent)
-            super.onCreate(savedInstanceState)
+            allowBackPressTime = android.os.SystemClock.uptimeMillis() + 800L
+        super.onCreate(savedInstanceState)
             Log.d(TAG, "Fast trigger invoked: activePkg=$activePkg, music=$isMusicPlaying")
 
             val shouldResume = isMusicPlaying || (!activePkg.isNullOrEmpty() && !isOnLauncher)
@@ -101,6 +103,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             return
         }
 
+        allowBackPressTime = android.os.SystemClock.uptimeMillis() + 800L
         super.onCreate(savedInstanceState)
         // Ensure settings screen expands to full screen match_parent
         window.setLayout(
@@ -137,6 +140,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        allowBackPressTime = android.os.SystemClock.uptimeMillis() + 800L
 
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val isMusicPlaying = audioManager?.isMusicActive ?: false
@@ -505,12 +509,6 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     // ==========================================
 
     private fun setupTriggerModeControls() {
-        binding.btnTriggerXiaomi.setOnClickListener {
-            lifecycleScope.launch {
-                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_XIAOMI_ALL)
-            }
-        }
-
         binding.btnTriggerLive.setOnClickListener {
             lifecycleScope.launch {
                 prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
@@ -539,14 +537,10 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     }
 
     private fun updateTriggerTargetUi(target: String) {
-        val isXiaomi = (target == PreferencesManager.TRIGGER_XIAOMI_ALL)
         val isLive = (target == PreferencesManager.TRIGGER_LIVE)
         val isStar = (target == PreferencesManager.TRIGGER_STAR)
         val isNetflix = (target == PreferencesManager.TRIGGER_NETFLIX)
         val isCustom = (target == PreferencesManager.TRIGGER_CUSTOM)
-
-        binding.btnTriggerXiaomi.text = if (isXiaomi) "● Télécommande Xiaomi (Toutes)" else "○ Télécommande Xiaomi (Toutes)"
-        binding.btnTriggerXiaomi.setTextColor(getColor(if (isXiaomi) R.color.tv_text_primary else R.color.tv_text_secondary))
 
         binding.btnTriggerLive.text = if (isLive) "● Touche Live TV" else "○ Touche Live TV"
         binding.btnTriggerLive.setTextColor(getColor(if (isLive) R.color.tv_text_primary else R.color.tv_text_secondary))
@@ -558,10 +552,6 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         binding.btnTriggerNetflix.setTextColor(getColor(if (isNetflix) R.color.tv_text_primary else R.color.tv_text_secondary))
 
         when {
-            isXiaomi -> {
-                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Télécommande Xiaomi (Live, Netflix, Prime, Apps)"
-                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
-            }
             isLive -> {
                 binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Touche Live TV (Xiaomi Mi Box)"
                 binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
@@ -686,6 +676,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     // In case SetupActivity has focus when key is pressed
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.keyCode == KeyEvent.KEYCODE_BACK && android.os.SystemClock.uptimeMillis() < allowBackPressTime) {
+            Log.d(TAG, "Ignoring early BACK keyevent during startup transition")
+            return true
+        }
+
         if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_BACK && TimerService.isTestingVolumeFade) {
             TimerService.stopVolumeFadeTest(this)
             return true

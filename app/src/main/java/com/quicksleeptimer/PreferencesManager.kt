@@ -203,7 +203,6 @@ class PreferencesManager(private val context: Context) {
         const val TRIGGER_STAR = "star"
         const val TRIGGER_LIVE = "live"
         const val TRIGGER_NETFLIX = "netflix"
-        const val TRIGGER_XIAOMI_ALL = "xiaomi_all"
         const val TRIGGER_CUSTOM = "custom"
 
         val DEFAULT_TRIGGER_TARGET: String
@@ -211,7 +210,7 @@ class PreferencesManager(private val context: Context) {
                 val manufacturer = android.os.Build.MANUFACTURER ?: ""
                 val model = android.os.Build.MODEL ?: ""
                 return if (manufacturer.contains("Xiaomi", ignoreCase = true) || model.contains("MIBOX", ignoreCase = true)) {
-                    TRIGGER_XIAOMI_ALL
+                    TRIGGER_LIVE
                 } else {
                     TRIGGER_STAR
                 }

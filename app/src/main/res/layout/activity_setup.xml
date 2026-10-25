@@ -708,51 +708,9 @@
                 android:textColor="@color/tv_text_secondary"
                 android:textSize="13sp" />
 
-            <!-- Row 1: Primary Remote Presets (Xiaomi All & Google TV Star) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:baselineAligned="false"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnTriggerXiaomi"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="4dp"
-                    android:layout_margin="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_chip_selector"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="📱 Télécommande Xiaomi (Toutes)"
-                    android:textColor="@color/tv_text_primary"
-                    android:textSize="13sp" />
-
-                <Button
-                    android:id="@+id/btnTriggerStar"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_margin="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_chip_selector"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="★ Touche Étoile (Google TV)"
-                    android:textColor="@color/tv_text_primary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <!-- Row 2: Specific Single Keys (Live TV & Netflix) -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
                 android:baselineAligned="false"
                 android:clipChildren="false"
                 android:clipToPadding="false"
@@ -769,7 +727,23 @@
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:text="📺 Touche Live TV seule"
+                    android:text="📺 Touche Live TV"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnTriggerStar"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:layout_margin="3dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_apple_chip_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="★ Touche Étoile"
                     android:textColor="@color/tv_text_primary"
                     android:textSize="13sp" />
 
@@ -784,7 +758,7 @@
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:text="🍿 Touche Netflix seule"
+                    android:text="🍿 Touche Netflix"
                     android:textColor="@color/tv_text_primary"
                     android:textSize="13sp" />
             </LinearLayout>

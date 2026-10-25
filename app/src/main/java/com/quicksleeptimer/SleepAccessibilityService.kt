@@ -109,21 +109,38 @@ class SleepAccessibilityService : AccessibilityService() {
 
             if (shouldIntercept) {
                 val now = android.os.SystemClock.uptimeMillis()
-                if (now - lastInterceptTime > 400L) {
+                if (now - lastInterceptTime > 800L) {
                     lastInterceptTime = now
                     val targetAppToRestore = lastLegitimatePackage
-                    Log.d(TAG, "Autonomous interception of $pkg ($currentTarget)! Restoring: $targetAppToRestore and triggering Sleep Timer")
-                    
-                    // Immediately trigger Sleep Timer
-                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                    val wasPlaying = audioManager?.isMusicActive ?: false
-                    TimerService.startOrIncrement(
-                        applicationContext,
-                        wasMusicActive = wasPlaying || (!targetAppToRestore.isNullOrEmpty() && !isLauncherOrSettings(targetAppToRestore))
-                    )
+                    val isOnLauncher = isLauncherOrSettings(targetAppToRestore)
+                    Log.d(TAG, "Autonomous interception of $pkg ($currentTarget)! isOnLauncher=$isOnLauncher, restore=$targetAppToRestore")
 
-                    // Multi-stage dismissal and window restore
-                    dismissInterceptedApp(pkg, targetAppToRestore)
+                    if (isOnLauncher) {
+                        Log.d(TAG, "Live TV intercepted on launcher -> Launching SetupActivity and dismissing Live TV window")
+                        val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            putExtra("open_settings", true)
+                        }
+                        startActivity(setupIntent)
+
+                        // Clean single back dismissal to clear Live Channels
+                        serviceScope.launch {
+                            kotlinx.coroutines.delay(80)
+                            performGlobalAction(GLOBAL_ACTION_BACK)
+                        }
+                    } else {
+                        Log.d(TAG, "Live TV intercepted in app ($targetAppToRestore) -> Triggering Sleep Timer HUD")
+                        val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                        val wasPlaying = audioManager?.isMusicActive ?: false
+                        TimerService.startOrIncrement(
+                            applicationContext,
+                            wasMusicActive = wasPlaying || !targetAppToRestore.isNullOrEmpty()
+                        )
+                        // Single dismissal to reveal the underlying video app without disrupting playback
+                        dismissInterceptedApp(pkg, targetAppToRestore)
+                    }
                 }
             }
         }
@@ -132,33 +149,9 @@ class SleepAccessibilityService : AccessibilityService() {
     private fun dismissInterceptedApp(targetPkg: String, appToRestore: String?) {
         serviceScope.launch {
             Log.d(TAG, "dismissInterceptedApp: targetPkg=$targetPkg, restore=$appToRestore")
-
-            // Phase 1 (0ms): Dismiss modal / back out
-            performGlobalAction(GLOBAL_ACTION_BACK)
-
-            // Phase 2 (80ms): Restore previous legitimate app or Projectivy
+            // Wait 80ms for the target window to attach, then dismiss it cleanly with a single BACK action
             kotlinx.coroutines.delay(80)
-            if (!appToRestore.isNullOrEmpty() && appToRestore != "com.google.android.tvlauncher") {
-                restoreAppToFront(appToRestore)
-            } else {
-                restoreProjectivyOrHome()
-            }
-
-            // Phase 3 (200ms): If target still active, dismiss again and restore
-            kotlinx.coroutines.delay(120)
-            val currentPkg = getActivePackage()
-            if (isLiveTvPackage(currentPkg ?: "") || isNetflixPackage(currentPkg ?: "") || currentPkg == "com.google.android.gms") {
-                Log.w(TAG, "Target still active ($currentPkg) at 200ms, forcing BACK + restore")
-                performGlobalAction(GLOBAL_ACTION_BACK)
-                if (!appToRestore.isNullOrEmpty() && appToRestore != "com.google.android.tvlauncher") {
-                    restoreAppToFront(appToRestore)
-                } else {
-                    restoreProjectivyOrHome()
-                }
-            }
-
-            // Phase 4 (400ms): Target dismissal complete
-            kotlinx.coroutines.delay(200)
+            performGlobalAction(GLOBAL_ACTION_BACK)
             Log.d(TAG, "dismissInterceptedApp completed")
         }
     }
@@ -265,9 +258,6 @@ class SleepAccessibilityService : AccessibilityService() {
             }
             PreferencesManager.TRIGGER_NETFLIX -> {
                 (keyCode in NETFLIX_KEYCODES || scanCode in NETFLIX_SCANCODES)
-            }
-            PreferencesManager.TRIGGER_XIAOMI_ALL -> {
-                (keyCode in XIAOMI_ALL_KEYCODES || scanCode in XIAOMI_ALL_SCANCODES)
             }
             PreferencesManager.TRIGGER_CUSTOM -> {
                 (assignedKey > 0 && keyCode == assignedKey) || (assignedScan > 0 && scanCode == assignedScan)
@@ -384,8 +374,9 @@ class SleepAccessibilityService : AccessibilityService() {
             KeyEvent.KEYCODE_TV,          // 170
             KeyEvent.KEYCODE_WINDOW,      // 171
             KeyEvent.KEYCODE_DVR,         // 173
+            KeyEvent.KEYCODE_BUTTON_2,    // 189 (Xiaomi vendor Live TV keycode)
             KeyEvent.KEYCODE_ALL_APPS,    // 284
-            170, 171, 173, 183, 284
+            170, 171, 173, 183, 189, 284
         )
 
         val NETFLIX_SCANCODES = setOf(393)
@@ -397,20 +388,14 @@ class SleepAccessibilityService : AccessibilityService() {
             98, 99, 187
         )
 
-        // All Xiaomi remote dedicated shortcut buttons:
-        // Live/Apps (284/580), Netflix (1001/393), Prime Video (97/399), YouTube (99/400), Mi/Apps (98/401)
-        val XIAOMI_ALL_KEYCODES = LIVE_KEYCODES + NETFLIX_KEYCODES + setOf(97, 98, 99, 1001)
-        val XIAOMI_ALL_SCANCODES = LIVE_SCANCODES + NETFLIX_SCANCODES + setOf(393, 399, 400, 401, 580)
-
         fun isLiveTvPackage(pkg: String): Boolean {
             if (pkg.isEmpty()) return false
             return pkg == "com.google.android.tv" ||
+                    pkg == "com.android.tv" ||
+                    pkg == "com.google.android.tv.onboarding" ||
                     pkg == "com.mitv.tvhome.michannel" ||
                     pkg == "com.mitv.tvhome.atv" ||
-                    pkg == "com.android.tv" ||
-                    pkg.contains("livechannels", ignoreCase = true) ||
-                    pkg.contains("tvhome", ignoreCase = true) ||
-                    pkg.contains("michannel", ignoreCase = true)
+                    pkg.contains("livechannels", ignoreCase = true)
         }
 
         fun isNetflixPackage(pkg: String): Boolean {
