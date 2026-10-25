@@ -6,6 +6,24 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.3.1] - 2026-10-25
+
+### 🔧 Ajustements Visuels & Finitions Haute Précision
+* **Éradication du rognage des boutons au focus :**
+  - Ajout de `clipChildren="false"` et `clipToPadding="false"` sur tous les conteneurs parents (ScrollView, cartes, colonnes et lignes).
+  - Déclippage dynamique récursif des ancêtres dans `applyTvFocusScale` pour garantir que les arrondis gauche et droite ne soient jamais coupés net.
+  - Recalibrage de l'échelle à `1.02x` combinée à une élévation 3D (`translationZ = 12dp`) et une surbrillance à bordure blanche lumineuse de 2.5dp.
+* **Noir Profond OLED Absolu (`#000000`) & Verre Fumé Translucide :**
+  - Fond d'écran passé en noir pur OLED (`#000000`) avec halo d'aurore nocturne subtil au sommet.
+  - Cartes habillées d'un dégradé de verre fumé (`#1A1E2B` vers `#0B0C12`) avec biseau translucide à 15% d'opacité.
+* **Harmonisation Intégrale des Rayons de Courbure :**
+  - Remplacement du style pilule `999dp` inadapté sur le texte multi-lignes du statut Google TV par la nouvelle sous-carte biseautée à coins `14dp` (`bg_apple_subcard`).
+  - Standardisation absolue : `18dp` pour les grandes cartes, `14dp` pour les sous-conteneurs et messages, `12dp` pour les boutons/chips, et `999dp` exclusivement pour les micro-badges mono-ligne.
+* **Boutons Toggle Émeraude Lumineux :**
+  - Boutons `ACTIVÉ ✓` habillés d'un fond émeraude profond avec contour vert fluo et texte contrasté.
+
+---
+
 ## [1.3.0] - 2026-10-25
 
 ### 🎨 Refonte Complète UI/UX : Style Apple tvOS Dark & Store-Ready

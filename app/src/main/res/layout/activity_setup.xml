@@ -3,12 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/tv_background"
+    android:background="@drawable/bg_tv_screen"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:orientation="vertical"
         android:paddingStart="56dp"
         android:paddingTop="36dp"
@@ -21,6 +25,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -87,7 +93,7 @@
                 android:id="@+id/tvTimerStatusBadge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_apple_hud_pill"
+                android:background="@drawable/bg_apple_badge_neutral"
                 android:fontFamily="sans-serif-medium"
                 android:letterSpacing="0.02"
                 android:text="Timer inactif"
@@ -113,8 +119,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_apple_card"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="22dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -151,14 +159,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:baselineAligned="false"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="horizontal">
 
                 <!-- 1er appui card -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="10dp"
+                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="vertical">
 
                     <TextView
@@ -173,7 +185,8 @@
                         android:id="@+id/btnInitialDuration"
                         android:layout_width="match_parent"
                         android:layout_height="52dp"
-                        android:background="@drawable/bg_apple_button_primary"
+                        android:layout_margin="3dp"
+                        android:background="@drawable/bg_apple_chip_selector"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
                         android:fontFamily="sans-serif-medium"
@@ -188,9 +201,11 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
-                    android:layout_marginEnd="5dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_weight="1"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="vertical">
 
                     <TextView
@@ -205,7 +220,8 @@
                         android:id="@+id/btnStepDuration"
                         android:layout_width="match_parent"
                         android:layout_height="52dp"
-                        android:background="@drawable/bg_apple_button_primary"
+                        android:layout_margin="3dp"
+                        android:background="@drawable/bg_apple_chip_selector"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
                         android:fontFamily="sans-serif-medium"
@@ -220,8 +236,10 @@
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="vertical">
 
                     <TextView
@@ -236,7 +254,8 @@
                         android:id="@+id/btnMaxDuration"
                         android:layout_width="match_parent"
                         android:layout_height="52dp"
-                        android:background="@drawable/bg_apple_button_primary"
+                        android:layout_margin="3dp"
+                        android:background="@drawable/bg_apple_chip_selector"
                         android:focusable="true"
                         android:focusableInTouchMode="true"
                         android:fontFamily="sans-serif-medium"
@@ -267,13 +286,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_apple_card"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="22dp">
 
             <!-- Toggle Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -312,15 +335,17 @@
                     android:layout_width="wrap_content"
                     android:layout_height="44dp"
                     android:layout_marginStart="16dp"
-                    android:background="@drawable/bg_apple_chip_selector"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_apple_toggle_active"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:text="DÉSACTIVÉ"
-                    android:textColor="@color/tv_text_secondary"
-                    android:textSize="14sp" />
+                    android:paddingStart="22dp"
+                    android:paddingEnd="22dp"
+                    android:text="ACTIVÉ ✓"
+                    android:textColor="@color/tv_emerald_active"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <!-- Dimmer Sub-Options -->
@@ -328,6 +353,8 @@
                 android:id="@+id/layoutDimmerOptions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="vertical"
                 android:visibility="gone">
 
@@ -341,14 +368,19 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="horizontal">
 
                     <!-- Intensity -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="10dp"
+                        android:layout_marginEnd="8dp"
                         android:layout_weight="1"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
                         android:orientation="vertical">
 
                         <TextView
@@ -363,6 +395,7 @@
                             android:id="@+id/btnDimmerIntensity"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
+                            android:layout_margin="3dp"
                             android:background="@drawable/bg_apple_chip_selector"
                             android:focusable="true"
                             android:focusableInTouchMode="true"
@@ -376,8 +409,10 @@
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="8dp"
                         android:layout_weight="1"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
                         android:orientation="vertical">
 
                         <TextView
@@ -392,6 +427,7 @@
                             android:id="@+id/btnDimmerMode"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
+                            android:layout_margin="3dp"
                             android:background="@drawable/bg_apple_chip_selector"
                             android:focusable="true"
                             android:focusableInTouchMode="true"
@@ -405,11 +441,10 @@
                 <Button
                     android:id="@+id/btnTestDimmer"
                     android:layout_width="match_parent"
-                    android:layout_height="46dp"
+                    android:layout_height="48dp"
                     android:layout_marginTop="16dp"
+                    android:layout_margin="3dp"
                     android:background="@drawable/bg_apple_chip_selector"
-                    android:drawableStart="@drawable/ic_apple_eye"
-                    android:drawablePadding="10dp"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
@@ -438,13 +473,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_apple_card"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="22dp">
 
             <!-- Toggle Row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -483,15 +522,17 @@
                     android:layout_width="wrap_content"
                     android:layout_height="44dp"
                     android:layout_marginStart="16dp"
-                    android:background="@drawable/bg_apple_chip_selector"
+                    android:layout_margin="3dp"
+                    android:background="@drawable/bg_apple_toggle_active"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:text="DÉSACTIVÉ"
-                    android:textColor="@color/tv_text_secondary"
-                    android:textSize="14sp" />
+                    android:paddingStart="22dp"
+                    android:paddingEnd="22dp"
+                    android:text="ACTIVÉ ✓"
+                    android:textColor="@color/tv_emerald_active"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
             <!-- Volume Sub-Options -->
@@ -499,6 +540,8 @@
                 android:id="@+id/layoutVolumeFadeOptions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="vertical"
                 android:visibility="gone">
 
@@ -512,14 +555,19 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:baselineAligned="false"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
                     android:orientation="horizontal">
 
                     <!-- Mode -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginEnd="10dp"
+                        android:layout_marginEnd="8dp"
                         android:layout_weight="1"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
                         android:orientation="vertical">
 
                         <TextView
@@ -534,6 +582,7 @@
                             android:id="@+id/btnVolumeFadeMode"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
+                            android:layout_margin="3dp"
                             android:background="@drawable/bg_apple_chip_selector"
                             android:focusable="true"
                             android:focusableInTouchMode="true"
@@ -547,8 +596,10 @@
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="8dp"
                         android:layout_weight="1"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
                         android:orientation="vertical">
 
                         <TextView
@@ -563,6 +614,7 @@
                             android:id="@+id/btnRestoreVolume"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
+                            android:layout_margin="3dp"
                             android:background="@drawable/bg_apple_chip_selector"
                             android:focusable="true"
                             android:focusableInTouchMode="true"
@@ -578,6 +630,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="16dp"
+                    android:layout_margin="3dp"
                     android:background="@drawable/bg_apple_chip_selector"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
@@ -586,15 +639,15 @@
                     android:textColor="@color/tv_text_primary"
                     android:textSize="14sp" />
 
-                <!-- Volume Routing Status -->
+                <!-- Volume Routing Status (Unified 14dp Subcard) -->
                 <TextView
                     android:id="@+id/tvVolumeRoutingHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:background="@drawable/bg_apple_hud_pill"
-                    android:lineSpacingExtra="3dp"
-                    android:padding="12dp"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_apple_subcard"
+                    android:lineSpacingExtra="4dp"
+                    android:padding="16dp"
                     android:text="Statut du contrôle du volume..."
                     android:textColor="@color/tv_text_secondary"
                     android:textSize="12sp" />
@@ -619,8 +672,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_apple_card"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="22dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -656,6 +711,9 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="horizontal">
 
                 <Button
@@ -663,6 +721,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_marginEnd="6dp"
+                    android:layout_margin="3dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_apple_chip_selector"
                     android:focusable="true"
@@ -677,6 +736,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:layout_marginStart="6dp"
+                    android:layout_margin="3dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_apple_chip_selector"
                     android:focusable="true"
@@ -692,6 +752,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -699,6 +761,7 @@
                     android:id="@+id/btnAssignKey"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
+                    android:layout_margin="3dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_apple_chip_selector"
                     android:focusable="true"
@@ -748,15 +811,19 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:baselineAligned="false"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="horizontal">
 
             <!-- Overlay Permission -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_apple_card"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="vertical"
                 android:padding="20dp">
 
@@ -798,6 +865,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
                     android:layout_marginTop="14dp"
+                    android:layout_margin="3dp"
                     android:background="@drawable/bg_apple_button_primary"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
@@ -811,9 +879,11 @@
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_apple_card"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:orientation="vertical"
                 android:padding="20dp">
 
@@ -855,6 +925,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
                     android:layout_marginTop="14dp"
+                    android:layout_margin="3dp"
                     android:background="@drawable/bg_apple_button_primary"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
@@ -865,18 +936,18 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Play Protect Privacy Banner -->
+        <!-- Play Protect Privacy Banner (Unified 14dp Subcard) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:background="@drawable/bg_apple_hud_pill"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_apple_subcard"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="18dp"
-            android:paddingTop="12dp"
+            android:paddingTop="14dp"
             android:paddingEnd="18dp"
-            android:paddingBottom="12dp">
+            android:paddingBottom="14dp">
 
             <ImageView
                 android:layout_width="20dp"
@@ -911,13 +982,17 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:baselineAligned="false"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnSimulatePress"
                 android:layout_width="0dp"
                 android:layout_height="52dp"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="8dp"
+                android:layout_margin="3dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_apple_button_primary"
                 android:focusable="true"
@@ -931,7 +1006,8 @@
                 android:id="@+id/btnTestSleep"
                 android:layout_width="0dp"
                 android:layout_height="52dp"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="8dp"
+                android:layout_margin="3dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_apple_button_danger"
                 android:focusable="true"

@@ -568,11 +568,13 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     private fun updateDimmerEnabledUi(enabled: Boolean) {
         if (enabled) {
             binding.btnDimmerToggle.text = "ACTIVÉ ✓"
-            binding.btnDimmerToggle.setTextColor(getColor(R.color.tv_status_ok))
+            binding.btnDimmerToggle.setTextColor(getColor(R.color.tv_emerald_active))
+            binding.btnDimmerToggle.setBackgroundResource(R.drawable.bg_apple_toggle_active)
             binding.layoutDimmerOptions.visibility = View.VISIBLE
         } else {
             binding.btnDimmerToggle.text = "DÉSACTIVÉ"
             binding.btnDimmerToggle.setTextColor(getColor(R.color.tv_text_secondary))
+            binding.btnDimmerToggle.setBackgroundResource(R.drawable.bg_apple_toggle_inactive)
             binding.layoutDimmerOptions.visibility = View.GONE
         }
     }
@@ -624,12 +626,14 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     private fun updateVolumeFadeEnabledUi(enabled: Boolean) {
         if (enabled) {
             binding.btnVolumeFadeToggle.text = "ACTIVÉ ✓"
-            binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_status_ok))
+            binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_emerald_active))
+            binding.btnVolumeFadeToggle.setBackgroundResource(R.drawable.bg_apple_toggle_active)
             binding.layoutVolumeFadeOptions.visibility = View.VISIBLE
             checkAndDisplayVolumeRoutingStatus()
         } else {
             binding.btnVolumeFadeToggle.text = "DÉSACTIVÉ"
             binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_text_secondary))
+            binding.btnVolumeFadeToggle.setBackgroundResource(R.drawable.bg_apple_toggle_inactive)
             binding.layoutVolumeFadeOptions.visibility = View.GONE
         }
     }
@@ -717,17 +721,24 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
     }
 
-    private fun View.applyTvFocusScale(scale: Float = 1.04f) {
+    private fun View.applyTvFocusScale(scale: Float = 1.02f) {
         isFocusable = true
         isFocusableInTouchMode = true
         setOnFocusChangeListener { v, hasFocus ->
+            // Ensure parent and ancestors never clip this view during focus highlight
+            var p = v.parent
+            while (p is android.view.ViewGroup) {
+                p.clipChildren = false
+                p.clipToPadding = false
+                p = p.parent
+            }
             val targetScale = if (hasFocus) scale else 1.0f
-            val targetElevation = if (hasFocus) 8f else 0f
+            val targetElevation = if (hasFocus) 12f else 0f
             v.animate()
                 .scaleX(targetScale)
                 .scaleY(targetScale)
                 .translationZ(targetElevation)
-                .setDuration(160L)
+                .setDuration(150L)
                 .setInterpolator(DecelerateInterpolator(1.5f))
                 .start()
         }
