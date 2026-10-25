@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
@@ -16,9 +17,13 @@ import android.util.Log
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import android.widget.ArrayAdapter
+import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.quicksleeptimer.databinding.ActivitySetupBinding
@@ -121,7 +126,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         setupFocusAnimations()
         setupDurationControls()
         setupPermissionControls()
-        setupTriggerModeControls()
+        setupButtonMappingControls()
         setupNightDimmerControls()
         setupVolumeFadeControls()
         setupActionButtons()
@@ -130,17 +135,20 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName
         } catch (e: Exception) {
-            "1.3.6"
+            "1.3.7"
         }
         binding.tvAppVersion.text = "QuickSleepTimer v$versionName"
 
         // Default focus for TV remote
         binding.btnInitialDuration.requestFocus()
+
+        handleIntentExtras(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleIntentExtras(intent)
         allowBackPressTime = android.os.SystemClock.uptimeMillis() + 800L
 
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
@@ -170,6 +178,23 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         SleepAccessibilityService.instance?.hideStealthShield(animated = true)
         if (::binding.isInitialized) {
             refreshTimerStatusBadge()
+        }
+    }
+
+    private fun handleIntentExtras(intent: Intent) {
+        intent.getStringExtra("test_config_button")?.let { btn ->
+            val action = intent.getStringExtra("test_action") ?: PreferencesManager.ACTION_APP
+            val pkg = intent.getStringExtra("test_pkg") ?: ""
+            val label = intent.getStringExtra("test_label") ?: ""
+            lifecycleScope.launch {
+                when (btn) {
+                    "live" -> prefsManager.setLiveConfig(action, pkg, label)
+                    "netflix" -> prefsManager.setNetflixConfig(action, pkg, label)
+                    "star" -> prefsManager.setStarConfig(action, pkg, label)
+                    "custom" -> prefsManager.setCustomConfig(action, pkg, label)
+                }
+                updateButtonMappingUi()
+            }
         }
     }
 
@@ -237,34 +262,37 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             }
         }
         lifecycleScope.launch {
-            prefsManager.isLiveTriggerEnabledFlow.collectLatest {
-                updateTriggerTargetUi()
-            }
+            prefsManager.actionLiveFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
-            prefsManager.isNetflixTriggerEnabledFlow.collectLatest {
-                updateTriggerTargetUi()
-            }
+            prefsManager.appLabelLiveFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
-            prefsManager.isStarTriggerEnabledFlow.collectLatest {
-                updateTriggerTargetUi()
-            }
+            prefsManager.actionNetflixFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
-            prefsManager.triggerTargetFlow.collectLatest {
-                updateTriggerTargetUi()
-            }
+            prefsManager.appLabelNetflixFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
-            prefsManager.assignedKeyCodeFlow.collectLatest {
-                updateTriggerTargetUi()
-            }
+            prefsManager.actionStarFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
-            prefsManager.assignedScanCodeFlow.collectLatest {
-                updateTriggerTargetUi()
-            }
+            prefsManager.appLabelStarFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.actionCustomFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.appLabelCustomFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.assignedLabelFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.assignedKeyCodeFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.assignedScanCodeFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
             prefsManager.dimmerEnabledFlow.collectLatest { enabled ->
@@ -525,68 +553,278 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     // SECTION 3 : MODE DE DÉCLENCHEMENT
     // ==========================================
 
-    private fun setupTriggerModeControls() {
-        binding.btnTriggerLive.setOnClickListener {
-            val nextState = !prefsManager.isLiveTriggerEnabled
-            lifecycleScope.launch {
-                prefsManager.setLiveTriggerEnabled(nextState)
-            }
+    private fun setupButtonMappingControls() {
+        binding.btnRowLive.setOnClickListener {
+            showButtonActionDialog("live", "Touche Live TV (Xiaomi)")
         }
 
-        binding.btnTriggerStar.setOnClickListener {
-            val nextState = !prefsManager.isStarTriggerEnabled
-            lifecycleScope.launch {
-                prefsManager.setStarTriggerEnabled(nextState)
-            }
+        binding.btnRowNetflix.setOnClickListener {
+            showButtonActionDialog("netflix", "Touche Netflix")
         }
 
-        binding.btnTriggerNetflix.setOnClickListener {
-            val nextState = !prefsManager.isNetflixTriggerEnabled
-            lifecycleScope.launch {
-                prefsManager.setNetflixTriggerEnabled(nextState)
-            }
+        binding.btnRowStar.setOnClickListener {
+            showButtonActionDialog("star", "Touche Étoile (★)")
         }
 
-        binding.btnAssignKey.setOnClickListener {
-            if (isListeningForKey) {
-                cancelKeyListening()
-            } else {
+        binding.btnRowCustom.setOnClickListener {
+            if (prefsManager.cachedAssignedKeyCode <= 0 && prefsManager.cachedAssignedScanCode <= 0) {
                 startKeyListening()
+            } else {
+                showCustomButtonActionDialog()
             }
         }
     }
 
-    private fun updateTriggerTargetUi() {
-        val isLive = prefsManager.isLiveTriggerEnabled
-        val isStar = prefsManager.isStarTriggerEnabled
-        val isNetflix = prefsManager.isNetflixTriggerEnabled
-        val isCustom = (prefsManager.cachedTriggerTarget == PreferencesManager.TRIGGER_CUSTOM && (prefsManager.cachedAssignedKeyCode > 0 || prefsManager.cachedAssignedScanCode > 0))
-
-        binding.btnTriggerLive.text = if (isLive) "● Touche Live TV" else "○ Touche Live TV"
-        binding.btnTriggerLive.setTextColor(getColor(if (isLive) R.color.tv_text_primary else R.color.tv_text_secondary))
-
-        binding.btnTriggerStar.text = if (isStar) "● Touche Étoile (★)" else "○ Touche Étoile (★)"
-        binding.btnTriggerStar.setTextColor(getColor(if (isStar) R.color.tv_text_primary else R.color.tv_text_secondary))
-
-        binding.btnTriggerNetflix.text = if (isNetflix) "● Touche Netflix" else "○ Touche Netflix"
-        binding.btnTriggerNetflix.setTextColor(getColor(if (isNetflix) R.color.tv_text_primary else R.color.tv_text_secondary))
-
-        val activeList = mutableListOf<String>()
-        if (isLive) activeList.add("Live TV")
-        if (isNetflix) activeList.add("Netflix")
-        if (isStar) activeList.add("Étoile (★)")
-        if (isCustom) {
-            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(prefsManager.cachedAssignedKeyCode, prefsManager.cachedAssignedScanCode)
-            activeList.add(keyLabel)
+    private fun updateButtonMappingUi() {
+        // Row 1 : Live TV
+        val liveAction = prefsManager.cachedActionLive
+        val liveLabel = prefsManager.cachedAppLabelLive
+        when (liveAction) {
+            PreferencesManager.ACTION_TIMER -> {
+                binding.tvStatusLive.text = "Action : 🌙 Minuteur de Veille"
+                binding.tvStatusLive.setTextColor(getColor(R.color.tv_accent))
+            }
+            PreferencesManager.ACTION_APP -> {
+                binding.tvStatusLive.text = "Action : 🚀 ${liveLabel.ifEmpty { "Application" }}"
+                binding.tvStatusLive.setTextColor(getColor(R.color.tv_accent))
+            }
+            else -> {
+                binding.tvStatusLive.text = "Action : ❌ Désactivée"
+                binding.tvStatusLive.setTextColor(getColor(R.color.tv_text_secondary))
+            }
         }
 
-        if (activeList.isNotEmpty()) {
-            binding.tvAssignedKeyLabel.text = "✓ Déclencheurs actifs : " + activeList.joinToString(", ")
-            binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+        // Row 2 : Netflix
+        val netflixAction = prefsManager.cachedActionNetflix
+        val netflixLabel = prefsManager.cachedAppLabelNetflix
+        when (netflixAction) {
+            PreferencesManager.ACTION_TIMER -> {
+                binding.tvStatusNetflix.text = "Action : 🌙 Minuteur de Veille"
+                binding.tvStatusNetflix.setTextColor(getColor(R.color.tv_accent))
+            }
+            PreferencesManager.ACTION_APP -> {
+                binding.tvStatusNetflix.text = "Action : 🚀 ${netflixLabel.ifEmpty { "Application" }}"
+                binding.tvStatusNetflix.setTextColor(getColor(R.color.tv_accent))
+            }
+            else -> {
+                binding.tvStatusNetflix.text = "Action : ❌ Désactivée"
+                binding.tvStatusNetflix.setTextColor(getColor(R.color.tv_text_secondary))
+            }
+        }
+
+        // Row 3 : Star
+        val starAction = prefsManager.cachedActionStar
+        val starLabel = prefsManager.cachedAppLabelStar
+        when (starAction) {
+            PreferencesManager.ACTION_TIMER -> {
+                binding.tvStatusStar.text = "Action : 🌙 Minuteur de Veille"
+                binding.tvStatusStar.setTextColor(getColor(R.color.tv_accent))
+            }
+            PreferencesManager.ACTION_APP -> {
+                binding.tvStatusStar.text = "Action : 🚀 ${starLabel.ifEmpty { "Application" }}"
+                binding.tvStatusStar.setTextColor(getColor(R.color.tv_accent))
+            }
+            else -> {
+                binding.tvStatusStar.text = "Action : ❌ Désactivée"
+                binding.tvStatusStar.setTextColor(getColor(R.color.tv_text_secondary))
+            }
+        }
+
+        // Row 4 : Custom
+        val customAction = prefsManager.cachedActionCustom
+        val customLabel = prefsManager.cachedAppLabelCustom
+        val customKeyAssigned = prefsManager.cachedAssignedKeyCode > 0 || prefsManager.cachedAssignedScanCode > 0
+        if (!customKeyAssigned) {
+            binding.tvTitleCustom.text = "⚡ Touche Personnalisée"
+            binding.tvStatusCustom.text = "Action : Non configurée (Cliquer pour assigner)"
+            binding.tvStatusCustom.setTextColor(getColor(R.color.tv_text_secondary))
         } else {
-            binding.tvAssignedKeyLabel.text = "⚠️ Aucun déclencheur sélectionné"
-            binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_warning))
+            val keyName = prefsManager.cachedAssignedLabel.ifEmpty {
+                SleepAccessibilityService.getFriendlyKeyName(prefsManager.cachedAssignedKeyCode, prefsManager.cachedAssignedScanCode)
+            }
+            binding.tvTitleCustom.text = "⚡ Touche Personnalisée ($keyName)"
+            when (customAction) {
+                PreferencesManager.ACTION_TIMER -> {
+                    binding.tvStatusCustom.text = "Action : 🌙 Minuteur de Veille"
+                    binding.tvStatusCustom.setTextColor(getColor(R.color.tv_accent))
+                }
+                PreferencesManager.ACTION_APP -> {
+                    binding.tvStatusCustom.text = "Action : 🚀 ${customLabel.ifEmpty { "Application" }}"
+                    binding.tvStatusCustom.setTextColor(getColor(R.color.tv_accent))
+                }
+                else -> {
+                    binding.tvStatusCustom.text = "Action : ❌ Désactivée"
+                    binding.tvStatusCustom.setTextColor(getColor(R.color.tv_text_secondary))
+                }
+            }
         }
+    }
+
+    private fun showButtonActionDialog(buttonId: String, buttonTitle: String) {
+        val options = arrayOf(
+            "🌙 Minuteur de Veille",
+            "🚀 Lancer une application...",
+            "❌ Désactiver cette touche"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(buttonTitle)
+            .setItems(options) { dialog, which ->
+                when (which) {
+                    0 -> {
+                        lifecycleScope.launch {
+                            when (buttonId) {
+                                "live" -> prefsManager.setLiveConfig(PreferencesManager.ACTION_TIMER)
+                                "netflix" -> prefsManager.setNetflixConfig(PreferencesManager.ACTION_TIMER)
+                                "star" -> prefsManager.setStarConfig(PreferencesManager.ACTION_TIMER)
+                                "custom" -> prefsManager.setCustomConfig(PreferencesManager.ACTION_TIMER)
+                            }
+                            updateButtonMappingUi()
+                        }
+                    }
+                    1 -> {
+                        showAppSelectionDialog(buttonId)
+                    }
+                    2 -> {
+                        lifecycleScope.launch {
+                            when (buttonId) {
+                                "live" -> prefsManager.setLiveConfig(PreferencesManager.ACTION_DISABLED)
+                                "netflix" -> prefsManager.setNetflixConfig(PreferencesManager.ACTION_DISABLED)
+                                "star" -> prefsManager.setStarConfig(PreferencesManager.ACTION_DISABLED)
+                                "custom" -> prefsManager.setCustomConfig(PreferencesManager.ACTION_DISABLED)
+                            }
+                            updateButtonMappingUi()
+                        }
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun showCustomButtonActionDialog() {
+        val keyName = prefsManager.cachedAssignedLabel.ifEmpty {
+            SleepAccessibilityService.getFriendlyKeyName(prefsManager.cachedAssignedKeyCode, prefsManager.cachedAssignedScanCode)
+        }
+        val options = arrayOf(
+            "🌙 Minuteur de Veille",
+            "🚀 Lancer une application...",
+            "⚡ Réassigner une autre touche...",
+            "🗑️ Supprimer / Effacer cette touche"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Touche Personnalisée : $keyName")
+            .setItems(options) { dialog, which ->
+                when (which) {
+                    0 -> {
+                        lifecycleScope.launch {
+                            prefsManager.setCustomConfig(PreferencesManager.ACTION_TIMER)
+                            updateButtonMappingUi()
+                        }
+                    }
+                    1 -> {
+                        showAppSelectionDialog("custom")
+                    }
+                    2 -> {
+                        startKeyListening()
+                    }
+                    3 -> {
+                        lifecycleScope.launch {
+                            prefsManager.clearCustomKey()
+                            updateButtonMappingUi()
+                        }
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    data class TvAppItem(
+        val pkg: String,
+        val label: String,
+        val icon: Drawable?
+    )
+
+    private fun showAppSelectionDialog(buttonId: String) {
+        val pm = packageManager
+        val apps = mutableListOf<TvAppItem>()
+        val seen = HashSet<String>()
+
+        try {
+            val leanbackIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+            val leanbackResolve = pm.queryIntentActivities(leanbackIntent, 0)
+            for (ri in leanbackResolve) {
+                val pkg = ri.activityInfo.packageName
+                if (pkg == packageName || seen.contains(pkg)) continue
+                seen.add(pkg)
+                val label = ri.loadLabel(pm).toString()
+                val icon = ri.loadIcon(pm)
+                apps.add(TvAppItem(pkg, label, icon))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying leanback apps: ${e.message}")
+        }
+
+        try {
+            val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            val launcherResolve = pm.queryIntentActivities(launcherIntent, 0)
+            for (ri in launcherResolve) {
+                val pkg = ri.activityInfo.packageName
+                if (pkg == packageName || seen.contains(pkg)) continue
+                seen.add(pkg)
+                val label = ri.loadLabel(pm).toString()
+                val icon = ri.loadIcon(pm)
+                apps.add(TvAppItem(pkg, label, icon))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying launcher apps: ${e.message}")
+        }
+
+        apps.sortBy { it.label.lowercase() }
+
+        if (apps.isEmpty()) {
+            Toast.makeText(this, "Aucune application TV trouvée", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val adapter = object : ArrayAdapter<TvAppItem>(this, android.R.layout.select_dialog_item, apps) {
+            override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                val view = super.getView(position, convertView, parent) as TextView
+                val item = getItem(position)
+                if (item != null) {
+                    view.text = "   " + item.label
+                    view.setTextColor(getColor(R.color.tv_text_primary))
+                    view.textSize = 14f
+                    val icon = item.icon
+                    icon?.setBounds(0, 0, 48, 48)
+                    view.setCompoundDrawables(icon, null, null, null)
+                    view.compoundDrawablePadding = 16
+                }
+                return view
+            }
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Sélectionner l'application à lancer")
+            .setAdapter(adapter) { dialog, which ->
+                val selected = apps[which]
+                lifecycleScope.launch {
+                    when (buttonId) {
+                        "live" -> prefsManager.setLiveConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
+                        "netflix" -> prefsManager.setNetflixConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
+                        "star" -> prefsManager.setStarConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
+                        "custom" -> prefsManager.setCustomConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
+                    }
+                    updateButtonMappingUi()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
     }
 
     private fun startKeyListening() {
@@ -600,7 +838,6 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         SleepAccessibilityService.isListeningForKeyAssignation = true
         SleepAccessibilityService.keyAssignListener = this
 
-        binding.btnAssignKey.text = "Annuler (ou touche Retour)"
         binding.tvAssignKeyFeedback.text = "Appuyez sur un bouton de la télécommande (Live, Netflix, Étoile...) ou RETOUR"
         binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_accent))
         binding.tvAssignKeyFeedback.visibility = View.VISIBLE
@@ -623,7 +860,6 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         isListeningForKey = false
         SleepAccessibilityService.isListeningForKeyAssignation = false
         SleepAccessibilityService.keyAssignListener = null
-        binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
         binding.tvAssignKeyFeedback.text = "Assignation annulée"
         binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_text_secondary))
         mainHandler.postDelayed({
@@ -641,12 +877,14 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
             isListeningForKey = false
             SleepAccessibilityService.keyAssignListener = null
-            binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
             val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode, scanCode)
             binding.tvAssignKeyFeedback.text = "✓ Touche assignée avec succès : $keyLabel"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE
-            updateTriggerTargetUi()
+            updateButtonMappingUi()
+
+            // Automatically prompt what this newly learned key should do
+            showButtonActionDialog("custom", "Action pour $keyLabel")
         }
     }
 
@@ -657,11 +895,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
             isListeningForKey = false
             SleepAccessibilityService.keyAssignListener = null
-            binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
             binding.tvAssignKeyFeedback.text = "✓ Déclencheur assigné avec succès : $label"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE
-            updateTriggerTargetUi()
+            updateButtonMappingUi()
+
+            showButtonActionDialog(target, "Action pour $label")
         }
     }
 
@@ -700,10 +939,13 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                 onForbiddenKeyDetected(keyCode)
                 return true
             } else {
+                val scanCode = event.scanCode
+                val friendly = SleepAccessibilityService.getFriendlyKeyName(keyCode, scanCode)
                 lifecycleScope.launch {
-                    prefsManager.setAssignedKeyCode(keyCode)
+                    prefsManager.setAssignedKey(keyCode, scanCode, friendly)
+                    prefsManager.setCustomConfig(PreferencesManager.ACTION_TIMER)
                 }
-                onKeyAssigned(keyCode)
+                onKeyAssigned(keyCode, scanCode)
                 return true
             }
         }
@@ -882,10 +1124,10 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.btnVolumeFadeMode,
             binding.btnRestoreVolume,
             binding.btnTestVolumeFade,
-            binding.btnTriggerLive,
-            binding.btnTriggerStar,
-            binding.btnTriggerNetflix,
-            binding.btnAssignKey,
+            binding.btnRowLive,
+            binding.btnRowNetflix,
+            binding.btnRowStar,
+            binding.btnRowCustom,
             binding.btnPermOverlay,
             binding.btnPermAccessibility,
             binding.btnSimulatePress,

@@ -668,6 +668,9 @@
             android:textColor="@color/tv_text_caption"
             android:textSize="11sp" />
 
+        <!-- ========================================== -->
+        <!-- GROUP 4 : BOUTONS & RACCOURCIS TÉLÉCOMMANDE-->
+        <!-- ========================================== -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -694,7 +697,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="10dp"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Mode d'interception"
+                    android:text="Boutons &amp; Raccourcis Télécommande"
                     android:textColor="@color/tv_text_primary"
                     android:textSize="16sp" />
             </LinearLayout>
@@ -704,98 +707,231 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="16dp"
-                android:text="Choisissez comment la télécommande déclenche le minuteur en arrière-plan."
+                android:text="Choisissez l'action associée à chaque touche de votre télécommande (Minuteur de Veille, Lancer une application, ou Désactivé)."
                 android:textColor="@color/tv_text_secondary"
                 android:textSize="13sp" />
 
+            <!-- ROW 1 : LIVE TV -->
             <LinearLayout
+                android:id="@+id/btnRowLive"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:baselineAligned="false"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btnTriggerLive"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginEnd="4dp"
-                    android:layout_margin="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_chip_selector"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="📺 Touche Live TV"
-                    android:textColor="@color/tv_text_primary"
-                    android:textSize="13sp" />
-
-                <Button
-                    android:id="@+id/btnTriggerStar"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"
-                    android:layout_margin="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_chip_selector"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="★ Touche Étoile"
-                    android:textColor="@color/tv_text_primary"
-                    android:textSize="13sp" />
-
-                <Button
-                    android:id="@+id/btnTriggerNetflix"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_margin="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_chip_selector"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="🍿 Touche Netflix"
-                    android:textColor="@color/tv_text_primary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/layoutKeyAssignation"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:clipChildren="false"
-                android:clipToPadding="false"
+                android:layout_margin="3dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_apple_chip_selector"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="12dp">
 
-                <Button
-                    android:id="@+id/btnAssignKey"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_margin="3dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_apple_chip_selector"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true"
-                    android:fontFamily="sans-serif-medium"
-                    android:text="⚡ Assigner une autre touche..."
-                    android:textColor="@color/tv_text_primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:id="@+id/tvAssignedKeyLabel"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
                     android:layout_weight="1"
-                    android:text="Touche : Non assignée"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvTitleLive"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="📺 Touche Live TV (Xiaomi)"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatusLive"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Action : 🌙 Minuteur de Veille"
+                        android:textColor="@color/tv_accent"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_apple_badge_neutral"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="Modifier  ›"
                     android:textColor="@color/tv_text_secondary"
-                    android:textSize="13sp" />
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- ROW 2 : NETFLIX -->
+            <LinearLayout
+                android:id="@+id/btnRowNetflix"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="3dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_apple_chip_selector"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvTitleNetflix"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="🍿 Touche Netflix"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatusNetflix"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Action : ❌ Désactivée"
+                        android:textColor="@color/tv_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_apple_badge_neutral"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="Modifier  ›"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- ROW 3 : STAR -->
+            <LinearLayout
+                android:id="@+id/btnRowStar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="3dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_apple_chip_selector"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvTitleStar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="★ Touche Étoile (Streamer / GTV)"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatusStar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Action : ❌ Désactivée"
+                        android:textColor="@color/tv_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_apple_badge_neutral"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="Modifier  ›"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- ROW 4 : CUSTOM KEY -->
+            <LinearLayout
+                android:id="@+id/btnRowCustom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="3dp"
+                android:background="@drawable/bg_apple_chip_selector"
+                android:clickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvTitleCustom"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="⚡ Touche Personnalisée"
+                        android:textColor="@color/tv_text_primary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatusCustom"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Action : Non configurée (Cliquer pour assigner)"
+                        android:textColor="@color/tv_text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_apple_badge_neutral"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:text="Modifier  ›"
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
 
             <TextView

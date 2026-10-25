@@ -11,8 +11,8 @@ android {
         applicationId = "com.quicksleeptimer"
         minSdk = 28
         targetSdk = 34
-        versionCode = 17
-        versionName = "1.4.1"
+        versionCode = 20
+        versionName = "1.3.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

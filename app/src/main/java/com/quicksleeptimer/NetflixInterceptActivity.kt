@@ -24,9 +24,34 @@ class NetflixInterceptActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val prefs = PreferencesManager.getInstance(this)
-        if (!prefs.isNetflixTriggerEnabled) {
-            Log.d(TAG, "Netflix button pressed but isNetflixTriggerEnabled is false -> Ignoring")
+        if (prefs.cachedActionNetflix == PreferencesManager.ACTION_DISABLED) {
+            Log.d(TAG, "Netflix button pressed but cachedActionNetflix is DISABLED -> Ignoring")
             finish()
+            return
+        }
+
+        if (prefs.cachedActionNetflix == PreferencesManager.ACTION_APP && prefs.cachedAppPkgNetflix.isNotEmpty()) {
+            val targetPkg = prefs.cachedAppPkgNetflix
+            Log.d(TAG, "Netflix intent intercepted -> Launching assigned app: $targetPkg")
+            try {
+                val launchIntent = (packageManager.getLeanbackLaunchIntentForPackage(targetPkg)
+                    ?: packageManager.getLaunchIntentForPackage(targetPkg))?.apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                }
+                if (launchIntent != null) {
+                    startActivity(launchIntent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to launch $targetPkg: ${e.message}")
+            }
+            finish()
+            if (Build.VERSION.SDK_INT >= 34) {
+                overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
+            } else {
+                @Suppress("DEPRECATION")
+                overridePendingTransition(0, 0)
+            }
             return
         }
 

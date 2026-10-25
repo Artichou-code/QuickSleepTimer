@@ -33,18 +33,43 @@ class PreferencesManager(private val context: Context) {
         private set
     @Volatile var cachedTriggerMode: String = MODE_ACCESSIBILITY
         private set
-    @Volatile var cachedTriggerTarget: String = DEFAULT_TRIGGER_TARGET
+
+    // Independent multi-button mapping cache
+    @Volatile var cachedActionLive: String = if (isXiaomiDevice()) ACTION_TIMER else ACTION_DISABLED
         private set
-    @Volatile var isLiveTriggerEnabled: Boolean = isXiaomiDevice()
+    @Volatile var cachedAppPkgLive: String = ""
         private set
-    @Volatile var isNetflixTriggerEnabled: Boolean = isXiaomiDevice()
+    @Volatile var cachedAppLabelLive: String = ""
         private set
-    @Volatile var isStarTriggerEnabled: Boolean = !isXiaomiDevice()
+
+    @Volatile var cachedActionNetflix: String = ACTION_DISABLED
         private set
+    @Volatile var cachedAppPkgNetflix: String = ""
+        private set
+    @Volatile var cachedAppLabelNetflix: String = ""
+        private set
+
+    @Volatile var cachedActionStar: String = if (!isXiaomiDevice()) ACTION_TIMER else ACTION_DISABLED
+        private set
+    @Volatile var cachedAppPkgStar: String = ""
+        private set
+    @Volatile var cachedAppLabelStar: String = ""
+        private set
+
+    @Volatile var cachedActionCustom: String = ACTION_DISABLED
+        private set
+    @Volatile var cachedAppPkgCustom: String = ""
+        private set
+    @Volatile var cachedAppLabelCustom: String = ""
+        private set
+
     @Volatile var cachedAssignedKeyCode: Int = DEFAULT_KEYCODE
         private set
     @Volatile var cachedAssignedScanCode: Int = 0
         private set
+    @Volatile var cachedAssignedLabel: String = ""
+        private set
+
     @Volatile var cachedHudDisplaySeconds: Int = DEFAULT_HUD_SECONDS
         private set
     @Volatile var cachedDimmerEnabled: Boolean = false
@@ -76,12 +101,57 @@ class PreferencesManager(private val context: Context) {
                     cachedIncrementStep = prefs[KEY_INCREMENT_STEP] ?: DEFAULT_INCREMENT_STEP
                     cachedMaxDuration = prefs[KEY_MAX_DURATION] ?: DEFAULT_MAX_DURATION
                     cachedTriggerMode = prefs[KEY_TRIGGER_MODE] ?: MODE_ACCESSIBILITY
-                    cachedTriggerTarget = prefs[KEY_TRIGGER_TARGET] ?: DEFAULT_TRIGGER_TARGET
-                    isLiveTriggerEnabled = prefs[KEY_TRIGGER_LIVE_ENABLED] ?: (cachedTriggerTarget == TRIGGER_LIVE || isXiaomiDevice())
-                    isNetflixTriggerEnabled = prefs[KEY_TRIGGER_NETFLIX_ENABLED] ?: (cachedTriggerTarget == TRIGGER_NETFLIX || isXiaomiDevice())
-                    isStarTriggerEnabled = prefs[KEY_TRIGGER_STAR_ENABLED] ?: (cachedTriggerTarget == TRIGGER_STAR || !isXiaomiDevice())
+
+                    // Multi-button mappings with backward-compatibility fallbacks
+                    val legacyTarget = prefs[KEY_TRIGGER_TARGET]
+                    val legacyAction = prefs[KEY_TRIGGER_ACTION] ?: ACTION_TIMER
+                    val legacyPkg = prefs[KEY_TRIGGER_APP_PKG] ?: ""
+                    val legacyLabel = prefs[KEY_TRIGGER_APP_LABEL] ?: ""
+
+                    cachedActionLive = prefs[KEY_ACTION_LIVE] ?: run {
+                        if (prefs[KEY_TRIGGER_LIVE_ENABLED] == true || legacyTarget == TRIGGER_LIVE || isXiaomiDevice()) {
+                            if (legacyTarget == TRIGGER_LIVE && legacyAction == ACTION_APP) ACTION_APP else ACTION_TIMER
+                        } else {
+                            ACTION_DISABLED
+                        }
+                    }
+                    cachedAppPkgLive = prefs[KEY_APP_PKG_LIVE] ?: if (cachedActionLive == ACTION_APP) legacyPkg else ""
+                    cachedAppLabelLive = prefs[KEY_APP_LABEL_LIVE] ?: if (cachedActionLive == ACTION_APP) legacyLabel else ""
+
+                    cachedActionNetflix = prefs[KEY_ACTION_NETFLIX] ?: run {
+                        if (prefs[KEY_TRIGGER_NETFLIX_ENABLED] == true || legacyTarget == TRIGGER_NETFLIX) {
+                            if (legacyTarget == TRIGGER_NETFLIX && legacyAction == ACTION_APP) ACTION_APP else ACTION_TIMER
+                        } else {
+                            ACTION_DISABLED
+                        }
+                    }
+                    cachedAppPkgNetflix = prefs[KEY_APP_PKG_NETFLIX] ?: if (cachedActionNetflix == ACTION_APP) legacyPkg else ""
+                    cachedAppLabelNetflix = prefs[KEY_APP_LABEL_NETFLIX] ?: if (cachedActionNetflix == ACTION_APP) legacyLabel else ""
+
+                    cachedActionStar = prefs[KEY_ACTION_STAR] ?: run {
+                        if (prefs[KEY_TRIGGER_STAR_ENABLED] == true || legacyTarget == TRIGGER_STAR || (!isXiaomiDevice() && legacyTarget == null)) {
+                            if (legacyTarget == TRIGGER_STAR && legacyAction == ACTION_APP) ACTION_APP else ACTION_TIMER
+                        } else {
+                            ACTION_DISABLED
+                        }
+                    }
+                    cachedAppPkgStar = prefs[KEY_APP_PKG_STAR] ?: if (cachedActionStar == ACTION_APP) legacyPkg else ""
+                    cachedAppLabelStar = prefs[KEY_APP_LABEL_STAR] ?: if (cachedActionStar == ACTION_APP) legacyLabel else ""
+
+                    cachedActionCustom = prefs[KEY_ACTION_CUSTOM] ?: run {
+                        if (legacyTarget == TRIGGER_CUSTOM) {
+                            if (legacyAction == ACTION_APP) ACTION_APP else ACTION_TIMER
+                        } else {
+                            ACTION_DISABLED
+                        }
+                    }
+                    cachedAppPkgCustom = prefs[KEY_APP_PKG_CUSTOM] ?: if (cachedActionCustom == ACTION_APP) legacyPkg else ""
+                    cachedAppLabelCustom = prefs[KEY_APP_LABEL_CUSTOM] ?: if (cachedActionCustom == ACTION_APP) legacyLabel else ""
+
                     cachedAssignedKeyCode = prefs[KEY_ASSIGNED_KEYCODE] ?: DEFAULT_KEYCODE
                     cachedAssignedScanCode = prefs[KEY_ASSIGNED_SCANCODE] ?: 0
+                    cachedAssignedLabel = prefs[KEY_ASSIGNED_LABEL] ?: ""
+
                     cachedHudDisplaySeconds = prefs[KEY_HUD_DISPLAY_SECONDS] ?: DEFAULT_HUD_SECONDS
                     cachedDimmerEnabled = prefs[KEY_DIMMER_ENABLED] ?: false
                     cachedDimmerIntensity = prefs[KEY_DIMMER_INTENSITY] ?: INTENSITY_MEDIUM
@@ -98,16 +168,28 @@ class PreferencesManager(private val context: Context) {
     val incrementStepFlow: Flow<Int> = context.dataStore.data.map { it[KEY_INCREMENT_STEP] ?: DEFAULT_INCREMENT_STEP }
     val maxDurationFlow: Flow<Int> = context.dataStore.data.map { it[KEY_MAX_DURATION] ?: DEFAULT_MAX_DURATION }
     val triggerModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_TRIGGER_MODE] ?: MODE_ACCESSIBILITY }
-    val triggerTargetFlow: Flow<String> = context.dataStore.data.map { it[KEY_TRIGGER_TARGET] ?: DEFAULT_TRIGGER_TARGET }
-    val isLiveTriggerEnabledFlow: Flow<Boolean> = context.dataStore.data.map {
-        it[KEY_TRIGGER_LIVE_ENABLED] ?: (it[KEY_TRIGGER_TARGET] == TRIGGER_LIVE || isXiaomiDevice())
+
+    val actionLiveFlow: Flow<String> = context.dataStore.data.map {
+        it[KEY_ACTION_LIVE] ?: if (it[KEY_TRIGGER_LIVE_ENABLED] == true || isXiaomiDevice()) ACTION_TIMER else ACTION_DISABLED
     }
-    val isNetflixTriggerEnabledFlow: Flow<Boolean> = context.dataStore.data.map {
-        it[KEY_TRIGGER_NETFLIX_ENABLED] ?: (it[KEY_TRIGGER_TARGET] == TRIGGER_NETFLIX || isXiaomiDevice())
+    val appLabelLiveFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_LABEL_LIVE] ?: "" }
+
+    val actionNetflixFlow: Flow<String> = context.dataStore.data.map {
+        it[KEY_ACTION_NETFLIX] ?: if (it[KEY_TRIGGER_NETFLIX_ENABLED] == true) ACTION_TIMER else ACTION_DISABLED
     }
-    val isStarTriggerEnabledFlow: Flow<Boolean> = context.dataStore.data.map {
-        it[KEY_TRIGGER_STAR_ENABLED] ?: (it[KEY_TRIGGER_TARGET] == TRIGGER_STAR || !isXiaomiDevice())
+    val appLabelNetflixFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_LABEL_NETFLIX] ?: "" }
+
+    val actionStarFlow: Flow<String> = context.dataStore.data.map {
+        it[KEY_ACTION_STAR] ?: if (it[KEY_TRIGGER_STAR_ENABLED] == true || !isXiaomiDevice()) ACTION_TIMER else ACTION_DISABLED
     }
+    val appLabelStarFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_LABEL_STAR] ?: "" }
+
+    val actionCustomFlow: Flow<String> = context.dataStore.data.map {
+        it[KEY_ACTION_CUSTOM] ?: ACTION_DISABLED
+    }
+    val appLabelCustomFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_LABEL_CUSTOM] ?: "" }
+    val assignedLabelFlow: Flow<String> = context.dataStore.data.map { it[KEY_ASSIGNED_LABEL] ?: "" }
+
     val assignedKeyCodeFlow: Flow<Int> = context.dataStore.data.map { it[KEY_ASSIGNED_KEYCODE] ?: DEFAULT_KEYCODE }
     val assignedScanCodeFlow: Flow<Int> = context.dataStore.data.map { it[KEY_ASSIGNED_SCANCODE] ?: 0 }
     val hudDisplaySecondsFlow: Flow<Int> = context.dataStore.data.map { it[KEY_HUD_DISPLAY_SECONDS] ?: DEFAULT_HUD_SECONDS }
@@ -138,43 +220,76 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[KEY_TRIGGER_MODE] = mode }
     }
 
-    suspend fun setTriggerTarget(target: String) {
-        cachedTriggerTarget = target
-        context.dataStore.edit { it[KEY_TRIGGER_TARGET] = target }
-    }
-
-    suspend fun setLiveTriggerEnabled(enabled: Boolean) {
-        isLiveTriggerEnabled = enabled
-        context.dataStore.edit { it[KEY_TRIGGER_LIVE_ENABLED] = enabled }
-    }
-
-    suspend fun setNetflixTriggerEnabled(enabled: Boolean) {
-        isNetflixTriggerEnabled = enabled
-        context.dataStore.edit { it[KEY_TRIGGER_NETFLIX_ENABLED] = enabled }
-    }
-
-    suspend fun setStarTriggerEnabled(enabled: Boolean) {
-        isStarTriggerEnabled = enabled
-        context.dataStore.edit { it[KEY_TRIGGER_STAR_ENABLED] = enabled }
-    }
-
-    suspend fun setAssignedKeyCode(keyCode: Int) {
-        cachedAssignedKeyCode = keyCode
-        context.dataStore.edit { it[KEY_ASSIGNED_KEYCODE] = keyCode }
-    }
-
-    suspend fun setAssignedKey(keyCode: Int, scanCode: Int) {
-        cachedAssignedKeyCode = keyCode
-        cachedAssignedScanCode = scanCode
+    suspend fun setLiveConfig(action: String, appPkg: String = "", appLabel: String = "") {
+        cachedActionLive = action
+        cachedAppPkgLive = appPkg
+        cachedAppLabelLive = appLabel
         context.dataStore.edit {
-            it[KEY_ASSIGNED_KEYCODE] = keyCode
-            it[KEY_ASSIGNED_SCANCODE] = scanCode
+            it[KEY_ACTION_LIVE] = action
+            it[KEY_APP_PKG_LIVE] = appPkg
+            it[KEY_APP_LABEL_LIVE] = appLabel
         }
     }
 
-    suspend fun setAssignedScanCode(scanCode: Int) {
+    suspend fun setNetflixConfig(action: String, appPkg: String = "", appLabel: String = "") {
+        cachedActionNetflix = action
+        cachedAppPkgNetflix = appPkg
+        cachedAppLabelNetflix = appLabel
+        context.dataStore.edit {
+            it[KEY_ACTION_NETFLIX] = action
+            it[KEY_APP_PKG_NETFLIX] = appPkg
+            it[KEY_APP_LABEL_NETFLIX] = appLabel
+        }
+    }
+
+    suspend fun setStarConfig(action: String, appPkg: String = "", appLabel: String = "") {
+        cachedActionStar = action
+        cachedAppPkgStar = appPkg
+        cachedAppLabelStar = appLabel
+        context.dataStore.edit {
+            it[KEY_ACTION_STAR] = action
+            it[KEY_APP_PKG_STAR] = appPkg
+            it[KEY_APP_LABEL_STAR] = appLabel
+        }
+    }
+
+    suspend fun setCustomConfig(action: String, appPkg: String = "", appLabel: String = "") {
+        cachedActionCustom = action
+        cachedAppPkgCustom = appPkg
+        cachedAppLabelCustom = appLabel
+        context.dataStore.edit {
+            it[KEY_ACTION_CUSTOM] = action
+            it[KEY_APP_PKG_CUSTOM] = appPkg
+            it[KEY_APP_LABEL_CUSTOM] = appLabel
+        }
+    }
+
+    suspend fun setAssignedKey(keyCode: Int, scanCode: Int, label: String = "") {
+        cachedAssignedKeyCode = keyCode
         cachedAssignedScanCode = scanCode
-        context.dataStore.edit { it[KEY_ASSIGNED_SCANCODE] = scanCode }
+        cachedAssignedLabel = label
+        context.dataStore.edit {
+            it[KEY_ASSIGNED_KEYCODE] = keyCode
+            it[KEY_ASSIGNED_SCANCODE] = scanCode
+            it[KEY_ASSIGNED_LABEL] = label
+        }
+    }
+
+    suspend fun clearCustomKey() {
+        cachedActionCustom = ACTION_DISABLED
+        cachedAppPkgCustom = ""
+        cachedAppLabelCustom = ""
+        cachedAssignedKeyCode = DEFAULT_KEYCODE
+        cachedAssignedScanCode = 0
+        cachedAssignedLabel = ""
+        context.dataStore.edit {
+            it[KEY_ACTION_CUSTOM] = ACTION_DISABLED
+            it[KEY_APP_PKG_CUSTOM] = ""
+            it[KEY_APP_LABEL_CUSTOM] = ""
+            it[KEY_ASSIGNED_KEYCODE] = DEFAULT_KEYCODE
+            it[KEY_ASSIGNED_SCANCODE] = 0
+            it[KEY_ASSIGNED_LABEL] = ""
+        }
     }
 
     suspend fun setHudDisplaySeconds(seconds: Int) {
@@ -233,25 +348,23 @@ class PreferencesManager(private val context: Context) {
         const val MODE_ACCESSIBILITY = "accessibility"
         const val MODE_BUTTON_MAPPER = "button_mapper"
 
+        // Actions available per button
+        const val ACTION_DISABLED = "disabled"
+        const val ACTION_TIMER = "timer"
+        const val ACTION_APP = "app"
+
+        // Legacy constants kept for compatibility
         const val TRIGGER_STAR = "star"
         const val TRIGGER_LIVE = "live"
         const val TRIGGER_NETFLIX = "netflix"
         const val TRIGGER_CUSTOM = "custom"
+        const val ACTION_LAUNCH_APP = "app"
 
         fun isXiaomiDevice(): Boolean {
             val manufacturer = android.os.Build.MANUFACTURER ?: ""
             val model = android.os.Build.MODEL ?: ""
             return manufacturer.contains("Xiaomi", ignoreCase = true) || model.contains("MIBOX", ignoreCase = true)
         }
-
-        val DEFAULT_TRIGGER_TARGET: String
-            get() {
-                return if (isXiaomiDevice()) {
-                    TRIGGER_LIVE
-                } else {
-                    TRIGGER_STAR
-                }
-            }
 
         const val INTENSITY_LIGHT = "light"
         const val INTENSITY_MEDIUM = "medium"
@@ -271,12 +384,36 @@ class PreferencesManager(private val context: Context) {
         private val KEY_INCREMENT_STEP = intPreferencesKey("pref_increment_step")
         private val KEY_MAX_DURATION = intPreferencesKey("pref_max_duration")
         private val KEY_TRIGGER_MODE = stringPreferencesKey("pref_trigger_mode")
-        private val KEY_TRIGGER_TARGET = stringPreferencesKey("pref_trigger_target")
+
+        // Multi-button mapping keys
+        val KEY_ACTION_LIVE = stringPreferencesKey("pref_action_live")
+        val KEY_APP_PKG_LIVE = stringPreferencesKey("pref_app_pkg_live")
+        val KEY_APP_LABEL_LIVE = stringPreferencesKey("pref_app_label_live")
+
+        val KEY_ACTION_NETFLIX = stringPreferencesKey("pref_action_netflix")
+        val KEY_APP_PKG_NETFLIX = stringPreferencesKey("pref_app_pkg_netflix")
+        val KEY_APP_LABEL_NETFLIX = stringPreferencesKey("pref_app_label_netflix")
+
+        val KEY_ACTION_STAR = stringPreferencesKey("pref_action_star")
+        val KEY_APP_PKG_STAR = stringPreferencesKey("pref_app_pkg_star")
+        val KEY_APP_LABEL_STAR = stringPreferencesKey("pref_app_label_star")
+
+        val KEY_ACTION_CUSTOM = stringPreferencesKey("pref_action_custom")
+        val KEY_APP_PKG_CUSTOM = stringPreferencesKey("pref_app_pkg_custom")
+        val KEY_APP_LABEL_CUSTOM = stringPreferencesKey("pref_app_label_custom")
+        val KEY_ASSIGNED_KEYCODE = intPreferencesKey("pref_assigned_keycode")
+        val KEY_ASSIGNED_SCANCODE = intPreferencesKey("pref_assigned_scancode")
+        val KEY_ASSIGNED_LABEL = stringPreferencesKey("pref_assigned_label")
+
+        // Legacy keys kept for migration
+        val KEY_TRIGGER_TARGET = stringPreferencesKey("pref_trigger_target")
         val KEY_TRIGGER_LIVE_ENABLED = booleanPreferencesKey("pref_trigger_live_enabled")
         val KEY_TRIGGER_NETFLIX_ENABLED = booleanPreferencesKey("pref_trigger_netflix_enabled")
         val KEY_TRIGGER_STAR_ENABLED = booleanPreferencesKey("pref_trigger_star_enabled")
-        private val KEY_ASSIGNED_KEYCODE = intPreferencesKey("pref_assigned_keycode")
-        private val KEY_ASSIGNED_SCANCODE = intPreferencesKey("pref_assigned_scancode")
+        val KEY_TRIGGER_ACTION = stringPreferencesKey("pref_trigger_action")
+        val KEY_TRIGGER_APP_PKG = stringPreferencesKey("pref_trigger_app_pkg")
+        val KEY_TRIGGER_APP_LABEL = stringPreferencesKey("pref_trigger_app_label")
+
         private val KEY_HUD_DISPLAY_SECONDS = intPreferencesKey("pref_hud_display_seconds")
         private val KEY_DIMMER_ENABLED = booleanPreferencesKey("pref_dimmer_enabled")
         private val KEY_DIMMER_INTENSITY = stringPreferencesKey("pref_dimmer_intensity")

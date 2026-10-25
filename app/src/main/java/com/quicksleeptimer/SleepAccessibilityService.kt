@@ -29,7 +29,7 @@ class SleepAccessibilityService : AccessibilityService() {
         Log.d(TAG, "SleepAccessibilityService created")
 
         serviceScope.launch {
-            prefsManager.triggerTargetFlow.collect {
+            prefsManager.actionCustomFlow.collect {
                 updateKeyFilterFlags()
             }
         }
@@ -62,6 +62,7 @@ class SleepAccessibilityService : AccessibilityService() {
     }
 
     private var lastInterceptTime: Long = 0L
+    private var lastLiveDismissTime: Long = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
@@ -88,59 +89,100 @@ class SleepAccessibilityService : AccessibilityService() {
                     isListeningForKeyAssignation = false
                     dismissInterceptedApp(pkg, packageName)
                     serviceScope.launch {
-                        prefsManager.setLiveTriggerEnabled(true)
+                        prefsManager.setLiveConfig(PreferencesManager.ACTION_TIMER)
                     }
-                    keyAssignListener?.onAppTriggerAssigned("Touche Live TV", PreferencesManager.TRIGGER_LIVE)
+                    keyAssignListener?.onAppTriggerAssigned("Touche Live TV", "live")
                     return
                 } else if (isNetflixPackage(pkg)) {
                     Log.d(TAG, "Netflix app ($pkg) launched during key assignation -> Enabling Netflix trigger")
                     isListeningForKeyAssignation = false
                     dismissInterceptedApp(pkg, packageName)
                     serviceScope.launch {
-                        prefsManager.setNetflixTriggerEnabled(true)
+                        prefsManager.setNetflixConfig(PreferencesManager.ACTION_TIMER)
                     }
-                    keyAssignListener?.onAppTriggerAssigned("Touche Netflix", PreferencesManager.TRIGGER_NETFLIX)
+                    keyAssignListener?.onAppTriggerAssigned("Touche Netflix", "netflix")
                     return
                 }
             }
 
             // 2. Autonomous Runtime Interception of hardcoded buttons (Live / Netflix)
             if (isLiveTvPackage(pkg)) {
-                if (prefsManager.isLiveTriggerEnabled) {
+                if (prefsManager.cachedActionLive != PreferencesManager.ACTION_DISABLED) {
+                    val now = android.os.SystemClock.uptimeMillis()
+
                     // 1. Immediately project stealth shield in 0ms to eliminate blue onboarding flash
                     overlayManager.showStealthShield(850L)
 
-                    // 2. ALWAYS immediately dismiss the Live TV window with BACK in the background
-                    Log.d(TAG, "Live TV window detected: $pkg ($className) -> Masking with Stealth Shield & Dismissing via BACK")
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    // 2. Dismiss the Live TV window with a SINGLE BACK action (debounced by 850ms)
+                    // CRITICAL: A duplicate BACK bleeds through and closes video playback in Crunchyroll/Netflix/VLC!
+                    if (now - lastLiveDismissTime > 850L) {
+                        lastLiveDismissTime = now
+                        serviceScope.launch {
+                            kotlinx.coroutines.delay(60L)
+                            Log.d(TAG, "Live TV window detected: $pkg ($className) -> Masking with Stealth Shield & Dismissing via single BACK")
+                            performGlobalAction(GLOBAL_ACTION_BACK)
+                        }
+                    } else {
+                        Log.d(TAG, "Live TV secondary window event ignored for BACK: $pkg ($className)")
+                    }
 
-                    val now = android.os.SystemClock.uptimeMillis()
-                    if (now - lastInterceptTime > 1000L) {
+                    if (now - lastInterceptTime > 850L) {
                         lastInterceptTime = now
                         val targetAppToRestore = lastLegitimatePackage
                         val isOnLauncher = isLauncherOrSettings(targetAppToRestore)
-                        Log.d(TAG, "Live TV trigger fired: isOnLauncher=$isOnLauncher, restore=$targetAppToRestore")
-
-                        if (isOnLauncher) {
-                            Log.d(TAG, "Live TV on launcher -> Opening SetupActivity")
-                            val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                        Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                putExtra("open_settings", true)
-                            }
-                            startActivity(setupIntent)
-                        } else {
-                            Log.d(TAG, "Live TV in app ($targetAppToRestore) -> Triggering Sleep Timer HUD")
-                            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                            val wasPlaying = audioManager?.isMusicActive ?: false
-                            TimerService.startOrIncrement(
-                                applicationContext,
-                                wasMusicActive = wasPlaying || !targetAppToRestore.isNullOrEmpty()
-                            )
-                        }
+                        Log.d(TAG, "Live TV trigger fired: action=${prefsManager.cachedActionLive}, app=${prefsManager.cachedAppPkgLive}, isOnLauncher=$isOnLauncher, restore=$targetAppToRestore")
+                        executeButtonAction(
+                            prefsManager.cachedActionLive,
+                            prefsManager.cachedAppPkgLive,
+                            isOnLauncher,
+                            targetAppToRestore
+                        )
                     }
                     return
+                }
+            }
+        }
+    }
+
+    private fun executeButtonAction(action: String, appPkg: String, isOnLauncher: Boolean, activePkg: String?) {
+        when (action) {
+            PreferencesManager.ACTION_TIMER -> {
+                if (isOnLauncher) {
+                    Log.d(TAG, "executeButtonAction: Trigger on launcher -> Opening SetupActivity")
+                    val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        putExtra("open_settings", true)
+                    }
+                    startActivity(setupIntent)
+                } else {
+                    Log.d(TAG, "executeButtonAction: Trigger in app ($activePkg) -> Triggering Sleep Timer HUD overlay")
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                    val wasPlaying = audioManager?.isMusicActive ?: false
+                    TimerService.startOrIncrement(
+                        applicationContext,
+                        wasMusicActive = wasPlaying || !activePkg.isNullOrEmpty()
+                    )
+                }
+            }
+            PreferencesManager.ACTION_APP -> {
+                if (appPkg.isNotEmpty()) {
+                    Log.d(TAG, "executeButtonAction: Launching assigned app $appPkg")
+                    try {
+                        val launchIntent = (packageManager.getLeanbackLaunchIntentForPackage(appPkg)
+                            ?: packageManager.getLaunchIntentForPackage(appPkg))?.apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                        }
+                        if (launchIntent != null) {
+                            startActivity(launchIntent)
+                        } else {
+                            Log.e(TAG, "executeButtonAction: No launch intent found for $appPkg")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "executeButtonAction: Failed to launch $appPkg: ${e.message}")
+                    }
                 }
             }
         }
@@ -221,7 +263,7 @@ class SleepAccessibilityService : AccessibilityService() {
         val scanCode = event.scanCode
         val action = event.action
 
-        Log.d(TAG, "onKeyEvent INCOMING: keyCode=$keyCode, scanCode=$scanCode, action=$action, target=${prefsManager.cachedTriggerTarget}")
+        Log.d(TAG, "onKeyEvent INCOMING: keyCode=$keyCode, scanCode=$scanCode, action=$action")
 
         // 0. ABSOLUTE CRITICAL SHORT-CIRCUIT:
         // Never delay, touch, or consume HOME key (Scancode 172 on Xiaomi Mi Box)
@@ -245,9 +287,10 @@ class SleepAccessibilityService : AccessibilityService() {
                 } else {
                     Log.d(TAG, "Valid key assigned: keyCode=$keyCode, scanCode=$scanCode (${getFriendlyKeyName(keyCode, scanCode)})")
                     isListeningForKeyAssignation = false
+                    val friendlyName = getFriendlyKeyName(keyCode, scanCode)
                     serviceScope.launch {
-                        prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_CUSTOM)
-                        prefsManager.setAssignedKey(keyCode, scanCode)
+                        prefsManager.setAssignedKey(keyCode, scanCode, friendlyName)
+                        prefsManager.setCustomConfig(PreferencesManager.ACTION_TIMER)
                     }
                     keyAssignListener?.onKeyAssigned(keyCode, scanCode)
                     return true // Consume event
@@ -256,50 +299,42 @@ class SleepAccessibilityService : AccessibilityService() {
             return true
         }
 
-        // 2. Hardware Native Trigger Interception (Zero Launch / Zero Pause / Zero Glitch)
-        val triggerTarget = prefsManager.cachedTriggerTarget
+        // 2. Hardware Native Trigger Interception per-button
         val assignedKey = prefsManager.cachedAssignedKeyCode
         val assignedScan = prefsManager.cachedAssignedScanCode
 
-        var isTargetKey = false
-        if (prefsManager.isLiveTriggerEnabled && (keyCode in LIVE_KEYCODES || scanCode in LIVE_SCANCODES)) {
-            isTargetKey = true
-        } else if (prefsManager.isNetflixTriggerEnabled && (keyCode in NETFLIX_KEYCODES || scanCode in NETFLIX_SCANCODES)) {
-            isTargetKey = true
-        } else if (prefsManager.isStarTriggerEnabled && (keyCode == KEYCODE_MACRO_1 || keyCode == 313)) {
-            isTargetKey = true
-        } else if (triggerTarget == PreferencesManager.TRIGGER_CUSTOM || assignedKey > 0 || assignedScan > 0) {
-            if ((assignedKey > 0 && keyCode == assignedKey) || (assignedScan > 0 && scanCode == assignedScan)) {
-                isTargetKey = true
-            }
+        var matchedAction: String? = null
+        var matchedPkg: String? = null
+        var matchedLabel: String? = null
+
+        if (prefsManager.cachedActionNetflix != PreferencesManager.ACTION_DISABLED &&
+            (keyCode in NETFLIX_KEYCODES || scanCode in NETFLIX_SCANCODES)) {
+            matchedAction = prefsManager.cachedActionNetflix
+            matchedPkg = prefsManager.cachedAppPkgNetflix
+            matchedLabel = "Netflix"
+        } else if (prefsManager.cachedActionStar != PreferencesManager.ACTION_DISABLED &&
+            (keyCode == KEYCODE_MACRO_1 || keyCode == 313)) {
+            matchedAction = prefsManager.cachedActionStar
+            matchedPkg = prefsManager.cachedAppPkgStar
+            matchedLabel = "Étoile"
+        } else if (prefsManager.cachedActionLive != PreferencesManager.ACTION_DISABLED &&
+            (keyCode in LIVE_KEYCODES || scanCode in LIVE_SCANCODES)) {
+            matchedAction = prefsManager.cachedActionLive
+            matchedPkg = prefsManager.cachedAppPkgLive
+            matchedLabel = "Live TV"
+        } else if (prefsManager.cachedActionCustom != PreferencesManager.ACTION_DISABLED &&
+            ((assignedKey > 0 && keyCode == assignedKey) || (assignedScan > 0 && scanCode == assignedScan))) {
+            matchedAction = prefsManager.cachedActionCustom
+            matchedPkg = prefsManager.cachedAppPkgCustom
+            matchedLabel = "Custom"
         }
 
-        if (isTargetKey) {
+        if (matchedAction != null) {
             if (action == KeyEvent.ACTION_DOWN) {
                 val activePkg = getActivePackage()
                 val isOnLauncher = isLauncherOrSettings(activePkg)
-                Log.d(TAG, "Hardware key intercepted: keyCode=$keyCode, scanCode=$scanCode (${getFriendlyKeyName(keyCode, scanCode)}), isOnLauncher=$isOnLauncher (pkg=$activePkg)")
-
-                if (isOnLauncher) {
-                    // User is on Launcher (Projectivy, TV Launcher, etc.) or Settings -> Open QuickSleepTimer Settings!
-                    Log.d(TAG, "Target key on launcher -> Opening SetupActivity")
-                    val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                Intent.FLAG_ACTIVITY_SINGLE_TOP
-                        putExtra("open_settings", true)
-                    }
-                    startActivity(setupIntent)
-                } else {
-                    // User is inside an app (Crunchyroll, VLC, SmartTube, etc.) -> Trigger or increment Sleep Timer!
-                    Log.d(TAG, "Target key in app -> Triggering Sleep Timer HUD overlay")
-                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                    val wasPlaying = audioManager?.isMusicActive ?: false
-                    TimerService.startOrIncrement(
-                        applicationContext,
-                        wasMusicActive = wasPlaying || !activePkg.isNullOrEmpty()
-                    )
-                }
+                Log.d(TAG, "Hardware key intercepted ($matchedLabel): keyCode=$keyCode, scanCode=$scanCode (${getFriendlyKeyName(keyCode, scanCode)}), action=$matchedAction, app=$matchedPkg, isOnLauncher=$isOnLauncher (pkg=$activePkg)")
+                executeButtonAction(matchedAction, matchedPkg ?: "", isOnLauncher, activePkg)
             }
             // Consume BOTH ACTION_DOWN and ACTION_UP completely, identical to Button Mapper's pref_alt_buttonmethod!
             return true
