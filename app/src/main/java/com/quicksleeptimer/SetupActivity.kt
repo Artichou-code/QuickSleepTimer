@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -70,7 +71,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         val shouldTriggerTimer = !isExplicitSettings && (isExplicitTrigger || (!isOnLauncher && activePkg != null))
 
         if (shouldTriggerTimer) {
-            // Fast transparent trigger: do not steal window focus from Crunchyroll/media
+            // Pulse 0: Immediate media play dispatch at 0ms before anything else
+            sendImmediateMediaPlay(applicationContext)
+
+            // Fast floating trigger: 1x1 pixel non-focusable, non-touchable invisible window
+            window.setLayout(1, 1)
+            window.setGravity(Gravity.TOP or Gravity.START)
             window.addFlags(
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
@@ -93,6 +99,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
 
         super.onCreate(savedInstanceState)
+        // Ensure settings screen expands to full screen match_parent
+        window.setLayout(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT
+        )
         Log.d(TAG, "SetupActivity: displaying settings screen (activePkg=$activePkg)")
         binding = ActivitySetupBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -127,6 +138,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         val shouldTriggerTimer = !isExplicitSettings && (isExplicitTrigger || (!isOnLauncher && activePkg != null))
 
         if (shouldTriggerTimer) {
+            sendImmediateMediaPlay(applicationContext)
             Log.d(TAG, "SetupActivity onNewIntent: fast trigger invoked (activePkg=$activePkg, music=$isMusicPlaying)")
             val shouldResume = isMusicPlaying || (!activePkg.isNullOrEmpty() && !isOnLauncher)
             TimerService.startOrIncrement(applicationContext, wasMusicActive = shouldResume)
@@ -141,6 +153,19 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
         if (::binding.isInitialized) {
             refreshTimerStatusBadge()
+        }
+    }
+
+    private fun sendImmediateMediaPlay(context: Context) {
+        try {
+            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+            val down = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY)
+            val up = KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY)
+            audioManager.dispatchMediaKeyEvent(down)
+            audioManager.dispatchMediaKeyEvent(up)
+            Log.d(TAG, "Pulse 0: Immediate KEYCODE_MEDIA_PLAY dispatched at 0ms from SetupActivity")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error dispatching immediate play key: ${e.message}")
         }
     }
 

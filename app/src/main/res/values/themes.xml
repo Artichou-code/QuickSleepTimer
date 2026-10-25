@@ -22,7 +22,7 @@
         <item name="android:windowCloseOnTouchOutside">false</item>
     </style>
 
-    <!-- Setup Activity Theme: Translucent window so fast trigger doesn't pause background video, but solid layout background when opened -->
+    <!-- Setup Activity Theme: Translucent window so fast trigger doesn't flash, with solid 100% full-screen layout for settings -->
     <style name="Theme.QuickSleepTimer.Setup" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>

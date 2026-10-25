@@ -98,14 +98,16 @@ class TimerService : Service() {
 
     private fun autoResumePlayback() {
         serviceScope.launch {
-            // Pulse 1 at 100ms: ultra-fast immediate resumption
-            delay(100L)
+            // Pulse 1: Instantaneous dispatch at 0ms (no initial delay)
             sendMediaPlayKey()
-            // Pulse 2 at +150ms (250ms total): ensures playback if transition took slightly longer
-            delay(150L)
+            // Pulse 2 at +35ms: rapid re-trigger while activity is tearing down
+            delay(35L)
             sendMediaPlayKey()
-            // Pulse 3 at +180ms (430ms total): safety backup pulse
-            delay(180L)
+            // Pulse 3 at +75ms (110ms total): confirmation pulse
+            delay(75L)
+            sendMediaPlayKey()
+            // Pulse 4 at +120ms (230ms total): fallback if player was slow to resume
+            delay(120L)
             val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             if (audioManager?.isMusicActive == false) {
                 sendMediaPlayKey()

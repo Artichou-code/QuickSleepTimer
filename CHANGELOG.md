@@ -6,6 +6,23 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.2.2] - 2026-10-25
+
+### ⚡ Performances & Zéro Pause Multimédia (Crunchyroll / ExoPlayer)
+* **Pulse 0 Immédiat à 0 ms (`SetupActivity.onCreate`) :**
+  - Dès la première milliseconde d'entrée dans le cycle de vie de `SetupActivity`, un événement direct `KEYCODE_MEDIA_PLAY` est injecté via `AudioManager.dispatchMediaKeyEvent`.
+  - Annule instantanément toute intention de mise en pause du lecteur vidéo sous-jacent (Crunchyroll / ExoPlayer) avant même l'initialisation des vues.
+* **Fenêtre Fantôme 1x1 Pixel (`FLAG_NOT_FOCUSABLE` & `FLAG_NOT_TOUCHABLE`) :**
+  - Lors du déclenchement rapide par raccourci télécommande, la fenêtre système est restreinte à une taille microscopique de 1x1 px positionnée à l'origine `(0, 0)`.
+  - Android WindowManager ne retire jamais le focus graphique de la vidéo en cours de lecture.
+* **Séquence Haute Fréquence de Réactivation Sonore/Vidéo :**
+  - Remplacement de l'ancien délai artificiel de 100 ms par une séquence d'impulsions à cadence ultra-rapide : Pulse 1 à 0 ms, Pulse 2 à +35 ms, Pulse 3 à +110 ms, Pulse 4 à +230 ms.
+  - La micro-coupure audio/vidéo perçue passe d'environ 200–250 ms à un niveau quasi imperceptible (15–30 ms).
+* **Interface Réglages Plein Écran Garantie :**
+  - Préservation du plein écran immersif 1920x1080 sans encadrement de dialogue quand les paramètres sont ouverts depuis l'écran d'accueil.
+
+---
+
 ## [1.2.1] - 2026-10-25
 
 ### ✨ Améliorations & Corrections Audio
