@@ -111,6 +111,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             WindowManager.LayoutParams.MATCH_PARENT
         )
         Log.d(TAG, "SetupActivity: displaying settings screen (activePkg=$activePkg)")
+        SleepAccessibilityService.instance?.hideStealthShield(animated = true)
         binding = ActivitySetupBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -166,6 +167,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             }
             return
         }
+        SleepAccessibilityService.instance?.hideStealthShield(animated = true)
         if (::binding.isInitialized) {
             refreshTimerStatusBadge()
         }

@@ -32,6 +32,10 @@ class OverlayManager(private val context: Context) {
     private var hudDismissRunnable: Runnable? = null
     private var isHudShowing: Boolean = false
 
+    // Calque 3 : Stealth Shield (Masquage anti-flash de l'application Live)
+    private var shieldView: View? = null
+    private var shieldDismissRunnable: Runnable? = null
+
     val isHudVisible: Boolean
         get() = isHudShowing
 
@@ -280,6 +284,93 @@ class OverlayManager(private val context: Context) {
         } finally {
             if (hudBinding?.root === rootView) {
                 hudBinding = null
+            }
+        }
+    }
+
+    // ==========================================
+    // CALQUE 3 : STEALTH SHIELD (ANTI-FLASH OVERLAY)
+    // ==========================================
+
+    fun showStealthShield(durationMs: Long = 850L) {
+        mainHandler.post {
+            if (!canDrawOverlays()) return@post
+
+            shieldDismissRunnable?.let { mainHandler.removeCallbacks(it) }
+
+            if (shieldView == null) {
+                val view = View(context).apply {
+                    setBackgroundColor(Color.BLACK)
+                    alpha = 1f
+                }
+
+                val layoutParams = WindowManager.LayoutParams(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    PixelFormat.OPAQUE
+                ).apply {
+                    gravity = Gravity.FILL
+                }
+
+                try {
+                    windowManager.addView(view, layoutParams)
+                    shieldView = view
+                    Log.d(TAG, "Stealth shield overlay added: blocking Live Channels blue flash")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error adding stealth shield view", e)
+                }
+            } else {
+                shieldView?.alpha = 1f
+            }
+
+            shieldDismissRunnable = Runnable {
+                hideStealthShield(animated = true)
+            }
+            mainHandler.postDelayed(shieldDismissRunnable!!, durationMs)
+        }
+    }
+
+    fun hideStealthShield(animated: Boolean = true) {
+        mainHandler.post {
+            shieldDismissRunnable?.let { mainHandler.removeCallbacks(it) }
+            shieldDismissRunnable = null
+
+            shieldView?.let { view ->
+                if (animated) {
+                    view.animate()
+                        .alpha(0f)
+                        .setDuration(250L)
+                        .withEndAction {
+                            try {
+                                windowManager.removeViewImmediate(view)
+                                Log.d(TAG, "Stealth shield overlay animated out and removed")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error removing stealth shield view", e)
+                            } finally {
+                                if (shieldView === view) {
+                                    shieldView = null
+                                }
+                            }
+                        }
+                        .start()
+                } else {
+                    try {
+                        windowManager.removeViewImmediate(view)
+                        Log.d(TAG, "Stealth shield overlay immediately removed")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error removing stealth shield view", e)
+                    } finally {
+                        if (shieldView === view) {
+                            shieldView = null
+                        }
+                    }
+                }
             }
         }
     }

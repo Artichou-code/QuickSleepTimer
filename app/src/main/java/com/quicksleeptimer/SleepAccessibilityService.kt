@@ -19,10 +19,12 @@ class SleepAccessibilityService : AccessibilityService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.Main)
     private lateinit var prefsManager: PreferencesManager
+    private lateinit var overlayManager: OverlayManager
 
     override fun onCreate() {
         super.onCreate()
         prefsManager = PreferencesManager.getInstance(this)
+        overlayManager = OverlayManager(this)
         instance = this
         Log.d(TAG, "SleepAccessibilityService created")
 
@@ -105,8 +107,11 @@ class SleepAccessibilityService : AccessibilityService() {
             // 2. Autonomous Runtime Interception of hardcoded buttons (Live / Netflix)
             if (isLiveTvPackage(pkg)) {
                 if (prefsManager.isLiveTriggerEnabled) {
-                    // ALWAYS immediately dismiss the Live TV window with BACK
-                    Log.d(TAG, "Live TV window detected: $pkg ($className) -> Dismissing via BACK")
+                    // 1. Immediately project stealth shield in 0ms to eliminate blue onboarding flash
+                    overlayManager.showStealthShield(850L)
+
+                    // 2. ALWAYS immediately dismiss the Live TV window with BACK in the background
+                    Log.d(TAG, "Live TV window detected: $pkg ($className) -> Masking with Stealth Shield & Dismissing via BACK")
                     performGlobalAction(GLOBAL_ACTION_BACK)
 
                     val now = android.os.SystemClock.uptimeMillis()
@@ -190,8 +195,17 @@ class SleepAccessibilityService : AccessibilityService() {
         Log.w(TAG, "SleepAccessibilityService interrupted")
     }
 
+    fun hideStealthShield(animated: Boolean = true) {
+        if (::overlayManager.isInitialized) {
+            overlayManager.hideStealthShield(animated)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        if (::overlayManager.isInitialized) {
+            overlayManager.hideStealthShield(animated = false)
+        }
         instance = null
         keyAssignListener = null
         isListeningForKeyAssignation = false
