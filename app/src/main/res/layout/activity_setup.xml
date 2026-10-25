@@ -17,7 +17,7 @@
         android:paddingStart="56dp"
         android:paddingTop="36dp"
         android:paddingEnd="56dp"
-        android:paddingBottom="160dp">
+        android:paddingBottom="56dp">
 
         <!-- ========================================== -->
         <!-- Apple TV Signature Header                  -->
