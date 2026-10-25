@@ -596,6 +596,19 @@
                     android:text="@string/btn_test_volume_fade"
                     android:textColor="@color/tv_text_primary"
                     android:textSize="14sp" />
+
+                <!-- Volume Mode / HDMI Routing Status Hint -->
+                <TextView
+                    android:id="@+id/tvVolumeRoutingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_hud_pill"
+                    android:lineSpacingExtra="3dp"
+                    android:padding="12dp"
+                    android:text="Statut du contrôle du volume..."
+                    android:textColor="@color/tv_text_secondary"
+                    android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
 

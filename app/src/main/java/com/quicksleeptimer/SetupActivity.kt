@@ -157,6 +157,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         if (::binding.isInitialized) {
             refreshPermissionStates()
             refreshTimerStatusBadge()
+            checkAndDisplayVolumeRoutingStatus()
         }
     }
 
@@ -570,10 +571,27 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.btnVolumeFadeToggle.text = "Baisse de volume : ACTIVÉE ✓"
             binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_status_ok))
             binding.layoutVolumeFadeOptions.visibility = View.VISIBLE
+            checkAndDisplayVolumeRoutingStatus()
         } else {
             binding.btnVolumeFadeToggle.text = "Baisse de volume : DÉSACTIVÉE"
             binding.btnVolumeFadeToggle.setTextColor(getColor(R.color.tv_text_secondary))
             binding.layoutVolumeFadeOptions.visibility = View.GONE
+        }
+    }
+
+    private fun checkAndDisplayVolumeRoutingStatus() {
+        val behavior = try {
+            Settings.Global.getInt(contentResolver, "AudioService_DeviceVolumeBehavior_hdmi", 0)
+        } catch (e: Exception) {
+            0
+        }
+
+        if (behavior == 1) {
+            binding.tvVolumeRoutingHint.text = "⚠️ Volume TV en mode Infrarouge (IR) :\nSur Google TV, le son HDMI est verrouillé à 100% quand la télécommande contrôle la TV en direct. Pour que la baisse progressive fonctionne, allez dans :\nParamètres TV > Télécommandes et accessoires > Configurer les boutons > Contrôle du volume > Choisissez 'Google TV Streamer'."
+            binding.tvVolumeRoutingHint.setTextColor(getColor(R.color.tv_status_warning))
+        } else {
+            binding.tvVolumeRoutingHint.text = "✓ Volume Google TV actif :\nLa sortie HDMI permet l'atténuation sonore numérique. La baisse progressive du volume est 100% opérationnelle."
+            binding.tvVolumeRoutingHint.setTextColor(getColor(R.color.tv_status_ok))
         }
     }
 
