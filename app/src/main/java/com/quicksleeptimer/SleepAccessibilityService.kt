@@ -75,6 +75,8 @@ class SleepAccessibilityService : AccessibilityService() {
         val keyCode = event.keyCode
         val action = event.action
 
+        Log.d(TAG, "onKeyEvent: keyCode=$keyCode (${getFriendlyKeyName(keyCode)}), action=${if (action == KeyEvent.ACTION_DOWN) "DOWN" else "UP"}")
+
         // 1. Key Learning / Assignation Mode (from SetupActivity)
         if (isListeningForKeyAssignation) {
             if (action == KeyEvent.ACTION_DOWN) {
@@ -88,7 +90,7 @@ class SleepAccessibilityService : AccessibilityService() {
                     keyAssignListener?.onForbiddenKeyDetected(keyCode)
                     return true // Consume so it doesn't navigate away
                 } else {
-                    Log.d(TAG, "Valid key assigned: $keyCode (${KeyEvent.keyCodeToString(keyCode)})")
+                    Log.d(TAG, "Valid key assigned: $keyCode (${getFriendlyKeyName(keyCode)})")
                     isListeningForKeyAssignation = false
                     serviceScope.launch {
                         prefsManager.setAssignedKeyCode(keyCode)
@@ -199,6 +201,31 @@ class SleepAccessibilityService : AccessibilityService() {
 
         fun isForbiddenKey(keyCode: Int): Boolean {
             return keyCode in FORBIDDEN_KEYCODES
+        }
+
+        fun getFriendlyKeyName(keyCode: Int): String {
+            return when (keyCode) {
+                KEYCODE_MACRO_1 -> "Bouton Étoile (★)"
+                KeyEvent.KEYCODE_TV -> "Touche Live / TV"
+                KeyEvent.KEYCODE_GUIDE -> "Touche Guide / EPG"
+                KeyEvent.KEYCODE_DVR -> "Touche DVR / Enregistrement"
+                KeyEvent.KEYCODE_WINDOW -> "Touche Live / TV Window"
+                KeyEvent.KEYCODE_BUTTON_1 -> "Bouton Personnalisé 1"
+                KeyEvent.KEYCODE_BUTTON_2 -> "Bouton Personnalisé 2"
+                KeyEvent.KEYCODE_BUTTON_3 -> "Bouton App (Netflix/Live)"
+                KeyEvent.KEYCODE_BUTTON_4 -> "Bouton App (Prime/VOD)"
+                KeyEvent.KEYCODE_PROG_RED -> "Touche Rouge (Raccourci TV)"
+                KeyEvent.KEYCODE_PROG_GREEN -> "Touche Verte (Raccourci TV)"
+                KeyEvent.KEYCODE_PROG_YELLOW -> "Touche Jaune (Raccourci TV)"
+                KeyEvent.KEYCODE_PROG_BLUE -> "Touche Bleue (Raccourci TV)"
+                KeyEvent.KEYCODE_CAPTIONS -> "Touche Sous-titres"
+                KeyEvent.KEYCODE_INFO -> "Touche Info"
+                KeyEvent.KEYCODE_SEARCH -> "Touche Recherche"
+                else -> {
+                    val raw = KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+                    if (raw.startsWith("Unknown", ignoreCase = true)) "Touche $keyCode" else raw
+                }
+            }
         }
 
         fun lockScreen(): Boolean {

@@ -11,8 +11,8 @@ android {
         applicationId = "com.quicksleeptimer"
         minSdk = 28
         targetSdk = 34
-        versionCode = 9
-        versionName = "1.3.3"
+        versionCode = 10
+        versionName = "1.3.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -20,6 +20,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

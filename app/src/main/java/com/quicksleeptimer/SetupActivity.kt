@@ -1,7 +1,9 @@
 package com.quicksleeptimer
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.media.AudioManager
 import android.net.Uri
@@ -324,27 +326,131 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     // SECTION 2 : PERMISSIONS
     // ==========================================
 
+    private fun isRealSettingsActivity(intent: Intent): Boolean {
+        return try {
+            val resolveInfo = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?: packageManager.resolveActivity(intent, 0)
+                ?: return false
+            val pkg = resolveInfo.activityInfo?.packageName ?: ""
+            // Avoid Google TV FrameworkPackageStubs which causes "Aucune application ne peut effectuer cette action"
+            !pkg.contains("frameworkpackagestubs", ignoreCase = true)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun openAccessibilitySettingsSafe() {
+        Toast.makeText(
+            this,
+            "⚠️ Ne pas activer TalkBack ! Rendez-vous dans 'Services' > 'QuickSleepTimer'",
+            Toast.LENGTH_LONG
+        ).show()
+
+        // 1. Try standard ACCESSIBILITY_SETTINGS (Google TV Streamer, Android standards)
+        val accessibilityIntent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (isRealSettingsActivity(accessibilityIntent)) {
+            try {
+                startActivity(accessibilityIntent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "Standard accessibility settings failed: ${e.message}")
+            }
+        }
+
+        // 2. Android TV Settings (Xiaomi Mi Box, Shield TV, Sony, Philips...)
+        // Accessibility is in Device Preferences within com.android.tv.settings
+        val tvSettingsIntent = Intent(Intent.ACTION_MAIN).apply {
+            setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (isRealSettingsActivity(tvSettingsIntent)) {
+            try {
+                startActivity(tvSettingsIntent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "TV MainSettings launch failed: ${e.message}")
+            }
+        }
+
+        // 3. Fallback to generic system settings
+        val genericSettings = Intent(Settings.ACTION_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(genericSettings)
+        } catch (e: Exception) {
+            Log.e(TAG, "All settings intents failed: ${e.message}")
+            Toast.makeText(this, "Ouvrez Paramètres > Préférences relatives à l'appareil > Accessibilité", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openOverlaySettingsSafe() {
+        // 1. Try specific app overlay permission
+        val overlayIntentWithPkg = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (isRealSettingsActivity(overlayIntentWithPkg)) {
+            try {
+                startActivity(overlayIntentWithPkg)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "App overlay settings failed: ${e.message}")
+            }
+        }
+
+        // 2. Try generic overlay screen
+        val genericOverlayIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (isRealSettingsActivity(genericOverlayIntent)) {
+            try {
+                startActivity(genericOverlayIntent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "Generic overlay settings failed: ${e.message}")
+            }
+        }
+
+        // 3. Try app details settings
+        val appDetailsIntent = Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.parse("package:$packageName")
+        ).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        if (isRealSettingsActivity(appDetailsIntent)) {
+            try {
+                startActivity(appDetailsIntent)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "App details settings failed: ${e.message}")
+            }
+        }
+
+        // 4. TV settings fallback
+        val tvSettingsIntent = Intent(Intent.ACTION_MAIN).apply {
+            setClassName("com.android.tv.settings", "com.android.tv.settings.MainSettings")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(tvSettingsIntent)
+        } catch (e: Exception) {
+            startActivity(Intent(Settings.ACTION_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+        }
+    }
+
     private fun setupPermissionControls() {
         binding.btnPermOverlay.setOnClickListener {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            ).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
+            openOverlaySettingsSafe()
         }
 
         binding.btnPermAccessibility.setOnClickListener {
-            Toast.makeText(
-                this,
-                "⚠️ Ne pas activer TalkBack ! Descendez jusqu'à 'Services' > 'QuickSleepTimer'",
-                Toast.LENGTH_LONG
-            ).show()
-            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
+            openAccessibilitySettingsSafe()
         }
     }
 
@@ -429,8 +535,8 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.tvAssignedKeyLabel.text = "Touche : Bouton Étoile (★) activé par défaut"
             binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
         } else {
-            val keyLabel = KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
-            binding.tvAssignedKeyLabel.text = getString(R.string.assigned_key_format, keyLabel, keyCode)
+            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode)
+            binding.tvAssignedKeyLabel.text = "Touche : $keyLabel (Code $keyCode)"
             binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_text_primary))
         }
     }
@@ -488,7 +594,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             isListeningForKey = false
             SleepAccessibilityService.keyAssignListener = null
             binding.btnAssignKey.text = getString(R.string.btn_assign_key)
-            val keyLabel = KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode)
             binding.tvAssignKeyFeedback.text = "✓ Touche assignée avec succès : $keyLabel"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE
