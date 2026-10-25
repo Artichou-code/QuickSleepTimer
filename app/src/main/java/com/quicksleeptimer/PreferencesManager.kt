@@ -33,6 +33,8 @@ class PreferencesManager(private val context: Context) {
         private set
     @Volatile var cachedTriggerMode: String = MODE_ACCESSIBILITY
         private set
+    @Volatile var cachedTriggerTarget: String = TRIGGER_STAR
+        private set
     @Volatile var cachedAssignedKeyCode: Int = DEFAULT_KEYCODE
         private set
     @Volatile var cachedHudDisplaySeconds: Int = DEFAULT_HUD_SECONDS
@@ -66,6 +68,7 @@ class PreferencesManager(private val context: Context) {
                     cachedIncrementStep = prefs[KEY_INCREMENT_STEP] ?: DEFAULT_INCREMENT_STEP
                     cachedMaxDuration = prefs[KEY_MAX_DURATION] ?: DEFAULT_MAX_DURATION
                     cachedTriggerMode = prefs[KEY_TRIGGER_MODE] ?: MODE_ACCESSIBILITY
+                    cachedTriggerTarget = prefs[KEY_TRIGGER_TARGET] ?: TRIGGER_STAR
                     cachedAssignedKeyCode = prefs[KEY_ASSIGNED_KEYCODE] ?: DEFAULT_KEYCODE
                     cachedHudDisplaySeconds = prefs[KEY_HUD_DISPLAY_SECONDS] ?: DEFAULT_HUD_SECONDS
                     cachedDimmerEnabled = prefs[KEY_DIMMER_ENABLED] ?: false
@@ -83,6 +86,7 @@ class PreferencesManager(private val context: Context) {
     val incrementStepFlow: Flow<Int> = context.dataStore.data.map { it[KEY_INCREMENT_STEP] ?: DEFAULT_INCREMENT_STEP }
     val maxDurationFlow: Flow<Int> = context.dataStore.data.map { it[KEY_MAX_DURATION] ?: DEFAULT_MAX_DURATION }
     val triggerModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_TRIGGER_MODE] ?: MODE_ACCESSIBILITY }
+    val triggerTargetFlow: Flow<String> = context.dataStore.data.map { it[KEY_TRIGGER_TARGET] ?: TRIGGER_STAR }
     val assignedKeyCodeFlow: Flow<Int> = context.dataStore.data.map { it[KEY_ASSIGNED_KEYCODE] ?: DEFAULT_KEYCODE }
     val hudDisplaySecondsFlow: Flow<Int> = context.dataStore.data.map { it[KEY_HUD_DISPLAY_SECONDS] ?: DEFAULT_HUD_SECONDS }
     val dimmerEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_DIMMER_ENABLED] ?: false }
@@ -110,6 +114,11 @@ class PreferencesManager(private val context: Context) {
     suspend fun setTriggerMode(mode: String) {
         cachedTriggerMode = mode
         context.dataStore.edit { it[KEY_TRIGGER_MODE] = mode }
+    }
+
+    suspend fun setTriggerTarget(target: String) {
+        cachedTriggerTarget = target
+        context.dataStore.edit { it[KEY_TRIGGER_TARGET] = target }
     }
 
     suspend fun setAssignedKeyCode(keyCode: Int) {
@@ -173,6 +182,11 @@ class PreferencesManager(private val context: Context) {
         const val MODE_ACCESSIBILITY = "accessibility"
         const val MODE_BUTTON_MAPPER = "button_mapper"
 
+        const val TRIGGER_STAR = "star"
+        const val TRIGGER_LIVE = "live"
+        const val TRIGGER_NETFLIX = "netflix"
+        const val TRIGGER_CUSTOM = "custom"
+
         const val INTENSITY_LIGHT = "light"
         const val INTENSITY_MEDIUM = "medium"
         const val INTENSITY_STRONG = "strong"
@@ -191,6 +205,7 @@ class PreferencesManager(private val context: Context) {
         private val KEY_INCREMENT_STEP = intPreferencesKey("pref_increment_step")
         private val KEY_MAX_DURATION = intPreferencesKey("pref_max_duration")
         private val KEY_TRIGGER_MODE = stringPreferencesKey("pref_trigger_mode")
+        private val KEY_TRIGGER_TARGET = stringPreferencesKey("pref_trigger_target")
         private val KEY_ASSIGNED_KEYCODE = intPreferencesKey("pref_assigned_keycode")
         private val KEY_HUD_DISPLAY_SECONDS = intPreferencesKey("pref_hud_display_seconds")
         private val KEY_DIMMER_ENABLED = booleanPreferencesKey("pref_dimmer_enabled")

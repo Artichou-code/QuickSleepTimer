@@ -717,33 +717,49 @@
                 android:orientation="horizontal">
 
                 <Button
-                    android:id="@+id/btnModeAccessibility"
+                    android:id="@+id/btnTriggerLive"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_margin="3dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_apple_chip_selector"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:text="● Mode Accessibilité (Recommandé)"
+                    android:text="📺 Touche Live TV"
                     android:textColor="@color/tv_text_primary"
                     android:textSize="13sp" />
 
                 <Button
-                    android:id="@+id/btnModeButtonMapper"
+                    android:id="@+id/btnTriggerStar"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_margin="3dp"
                     android:layout_weight="1"
                     android:background="@drawable/bg_apple_chip_selector"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:text="○ Mode Button Mapper"
-                    android:textColor="@color/tv_text_secondary"
+                    android:text="★ Touche Étoile"
+                    android:textColor="@color/tv_text_primary"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btnTriggerNetflix"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_margin="3dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_apple_chip_selector"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="🍿 Touche Netflix"
+                    android:textColor="@color/tv_text_primary"
                     android:textSize="13sp" />
             </LinearLayout>
 
@@ -751,7 +767,7 @@
                 android:id="@+id/layoutKeyAssignation"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:gravity="center_vertical"
@@ -767,7 +783,7 @@
                     android:focusable="true"
                     android:focusableInTouchMode="true"
                     android:fontFamily="sans-serif-medium"
-                    android:text="@string/btn_assign_key"
+                    android:text="⚡ Assigner une autre touche..."
                     android:textColor="@color/tv_text_primary"
                     android:textSize="13sp" />
 

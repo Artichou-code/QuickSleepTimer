@@ -224,8 +224,8 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             }
         }
         lifecycleScope.launch {
-            prefsManager.triggerModeFlow.collectLatest { mode ->
-                updateTriggerModeUi(mode)
+            prefsManager.triggerTargetFlow.collectLatest { target ->
+                updateTriggerTargetUi(target)
             }
         }
         lifecycleScope.launch {
@@ -493,15 +493,21 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     // ==========================================
 
     private fun setupTriggerModeControls() {
-        binding.btnModeAccessibility.setOnClickListener {
+        binding.btnTriggerLive.setOnClickListener {
             lifecycleScope.launch {
-                prefsManager.setTriggerMode(PreferencesManager.MODE_ACCESSIBILITY)
+                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
             }
         }
 
-        binding.btnModeButtonMapper.setOnClickListener {
+        binding.btnTriggerStar.setOnClickListener {
             lifecycleScope.launch {
-                prefsManager.setTriggerMode(PreferencesManager.MODE_BUTTON_MAPPER)
+                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_STAR)
+            }
+        }
+
+        binding.btnTriggerNetflix.setOnClickListener {
+            lifecycleScope.launch {
+                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_NETFLIX)
             }
         }
 
@@ -514,30 +520,49 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
     }
 
-    private fun updateTriggerModeUi(mode: String) {
-        if (mode == PreferencesManager.MODE_ACCESSIBILITY) {
-            binding.btnModeAccessibility.text = "● Mode Accessibilité (100% Zéro Pause)"
-            binding.btnModeAccessibility.setTextColor(getColor(R.color.tv_text_primary))
-            binding.btnModeButtonMapper.text = "○ Mode Button Mapper"
-            binding.btnModeButtonMapper.setTextColor(getColor(R.color.tv_text_secondary))
-            binding.layoutKeyAssignation.visibility = View.VISIBLE
-        } else {
-            binding.btnModeAccessibility.text = "○ Mode Accessibilité"
-            binding.btnModeAccessibility.setTextColor(getColor(R.color.tv_text_secondary))
-            binding.btnModeButtonMapper.text = "● Mode Button Mapper (TriggerActivity)"
-            binding.btnModeButtonMapper.setTextColor(getColor(R.color.tv_text_primary))
-            binding.layoutKeyAssignation.visibility = View.GONE
+    private fun updateTriggerTargetUi(target: String) {
+        val isLive = (target == PreferencesManager.TRIGGER_LIVE)
+        val isStar = (target == PreferencesManager.TRIGGER_STAR)
+        val isNetflix = (target == PreferencesManager.TRIGGER_NETFLIX)
+        val isCustom = (target == PreferencesManager.TRIGGER_CUSTOM)
+
+        binding.btnTriggerLive.text = if (isLive) "● Touche Live TV" else "○ Touche Live TV"
+        binding.btnTriggerLive.setTextColor(getColor(if (isLive) R.color.tv_text_primary else R.color.tv_text_secondary))
+
+        binding.btnTriggerStar.text = if (isStar) "● Touche Étoile (★)" else "○ Touche Étoile (★)"
+        binding.btnTriggerStar.setTextColor(getColor(if (isStar) R.color.tv_text_primary else R.color.tv_text_secondary))
+
+        binding.btnTriggerNetflix.text = if (isNetflix) "● Touche Netflix" else "○ Touche Netflix"
+        binding.btnTriggerNetflix.setTextColor(getColor(if (isNetflix) R.color.tv_text_primary else R.color.tv_text_secondary))
+
+        when {
+            isLive -> {
+                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Touche Live TV (Xiaomi Mi Box)"
+                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+            }
+            isStar -> {
+                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Bouton Étoile (★) (Google TV)"
+                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+            }
+            isNetflix -> {
+                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Bouton Netflix (Interception native)"
+                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+            }
+            isCustom -> {
+                val assignedKey = prefsManager.cachedAssignedKeyCode
+                val keyLabel = SleepAccessibilityService.getFriendlyKeyName(assignedKey)
+                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel"
+                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+            }
         }
     }
 
     private fun updateAssignedKeyUi(keyCode: Int) {
-        if (keyCode == PreferencesManager.DEFAULT_KEYCODE || keyCode == SleepAccessibilityService.KEYCODE_MACRO_1) {
-            binding.tvAssignedKeyLabel.text = "Touche : Bouton Étoile (★) activé par défaut"
-            binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
-        } else {
+        val currentTarget = prefsManager.cachedTriggerTarget
+        if (currentTarget == PreferencesManager.TRIGGER_CUSTOM) {
             val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode)
-            binding.tvAssignedKeyLabel.text = "Touche : $keyLabel (Code $keyCode)"
-            binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_text_primary))
+            binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel (Code $keyCode)"
+            binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
         }
     }
 
@@ -553,7 +578,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         SleepAccessibilityService.keyAssignListener = this
 
         binding.btnAssignKey.text = "Annuler (ou touche Retour)"
-        binding.tvAssignKeyFeedback.text = "Appuyez sur un bouton libre de la télécommande… (ou RETOUR pour annuler)"
+        binding.tvAssignKeyFeedback.text = "Appuyez sur un bouton de la télécommande (Live, Netflix, Étoile...) ou RETOUR"
         binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_accent))
         binding.tvAssignKeyFeedback.visibility = View.VISIBLE
 
@@ -575,7 +600,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         isListeningForKey = false
         SleepAccessibilityService.isListeningForKeyAssignation = false
         SleepAccessibilityService.keyAssignListener = null
-        binding.btnAssignKey.text = getString(R.string.btn_assign_key)
+        binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
         binding.tvAssignKeyFeedback.text = "Assignation annulée"
         binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_text_secondary))
         mainHandler.postDelayed({
@@ -593,12 +618,27 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
             isListeningForKey = false
             SleepAccessibilityService.keyAssignListener = null
-            binding.btnAssignKey.text = getString(R.string.btn_assign_key)
+            binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
             val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode)
             binding.tvAssignKeyFeedback.text = "✓ Touche assignée avec succès : $keyLabel"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE
-            updateAssignedKeyUi(keyCode)
+            updateTriggerTargetUi(PreferencesManager.TRIGGER_CUSTOM)
+        }
+    }
+
+    override fun onAppTriggerAssigned(label: String, target: String) {
+        runOnUiThread {
+            cancelListeningRunnable?.let { mainHandler.removeCallbacks(it) }
+            cancelListeningRunnable = null
+
+            isListeningForKey = false
+            SleepAccessibilityService.keyAssignListener = null
+            binding.btnAssignKey.text = "⚡ Assigner une autre touche..."
+            binding.tvAssignKeyFeedback.text = "✓ Déclencheur assigné avec succès : $label"
+            binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
+            binding.tvAssignKeyFeedback.visibility = View.VISIBLE
+            updateTriggerTargetUi(target)
         }
     }
 
@@ -814,8 +854,9 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.btnVolumeFadeMode,
             binding.btnRestoreVolume,
             binding.btnTestVolumeFade,
-            binding.btnModeAccessibility,
-            binding.btnModeButtonMapper,
+            binding.btnTriggerLive,
+            binding.btnTriggerStar,
+            binding.btnTriggerNetflix,
             binding.btnAssignKey,
             binding.btnPermOverlay,
             binding.btnPermAccessibility,

@@ -44,13 +44,56 @@ class SleepAccessibilityService : AccessibilityService() {
         lastForegroundPackage = getActivePackage()
     }
 
+    private var lastInterceptTime: Long = 0L
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val pkg = event.packageName?.toString()
-            if (!pkg.isNullOrEmpty() && pkg != packageName && pkg != "android") {
+            val pkg = event.packageName?.toString() ?: return
+            if (pkg.isNotEmpty() && pkg != packageName && pkg != "android") {
                 lastForegroundPackage = pkg
                 Log.d(TAG, "Foreground window package changed to: $pkg")
+            }
+
+            // 1. Learning Mode : If user presses a hardcoded button (Live or Netflix) that forces app launch
+            if (isListeningForKeyAssignation) {
+                if (isLiveTvPackage(pkg)) {
+                    Log.d(TAG, "Live TV app ($pkg) launched during key assignation -> Assigning TRIGGER_LIVE")
+                    isListeningForKeyAssignation = false
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    serviceScope.launch {
+                        prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
+                    }
+                    keyAssignListener?.onAppTriggerAssigned("Touche Live TV (Xiaomi)", PreferencesManager.TRIGGER_LIVE)
+                    return
+                } else if (isNetflixPackage(pkg)) {
+                    Log.d(TAG, "Netflix app ($pkg) launched during key assignation -> Assigning TRIGGER_NETFLIX")
+                    isListeningForKeyAssignation = false
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    serviceScope.launch {
+                        prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_NETFLIX)
+                    }
+                    keyAssignListener?.onAppTriggerAssigned("Touche Netflix", PreferencesManager.TRIGGER_NETFLIX)
+                    return
+                }
+            }
+
+            // 2. Autonomous Runtime Interception of hardcoded buttons (Live / Netflix)
+            val currentTarget = prefsManager.cachedTriggerTarget
+            val shouldIntercept = (currentTarget == PreferencesManager.TRIGGER_LIVE && isLiveTvPackage(pkg)) ||
+                    (currentTarget == PreferencesManager.TRIGGER_NETFLIX && isNetflixPackage(pkg))
+
+            if (shouldIntercept) {
+                val now = android.os.SystemClock.uptimeMillis()
+                if (now - lastInterceptTime > 1200L) {
+                    lastInterceptTime = now
+                    Log.d(TAG, "Autonomous interception of $pkg ($currentTarget)! Closing app and triggering Sleep Timer")
+                    // Instantly close the hardcoded app so the user stays on their video/stream
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                    val wasPlaying = audioManager?.isMusicActive ?: false
+                    TimerService.startOrIncrement(applicationContext, wasMusicActive = wasPlaying)
+                }
             }
         }
     }
@@ -93,6 +136,7 @@ class SleepAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "Valid key assigned: $keyCode (${getFriendlyKeyName(keyCode)})")
                     isListeningForKeyAssignation = false
                     serviceScope.launch {
+                        prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_CUSTOM)
                         prefsManager.setAssignedKeyCode(keyCode)
                     }
                     keyAssignListener?.onKeyAssigned(keyCode)
@@ -103,9 +147,15 @@ class SleepAccessibilityService : AccessibilityService() {
         }
 
         // 2. Regular Native Trigger Interception (100% Zero Activity / Zero Pause Guarantee)
+        val triggerTarget = prefsManager.cachedTriggerTarget
         val assignedKey = prefsManager.cachedAssignedKeyCode
-        val isStarButton = (keyCode == KEYCODE_MACRO_1)
-        val isTargetKey = (assignedKey != PreferencesManager.DEFAULT_KEYCODE && keyCode == assignedKey) || isStarButton
+
+        val isTargetKey = when (triggerTarget) {
+            PreferencesManager.TRIGGER_LIVE -> (keyCode in LIVE_KEYCODES)
+            PreferencesManager.TRIGGER_NETFLIX -> (keyCode in NETFLIX_KEYCODES)
+            PreferencesManager.TRIGGER_CUSTOM -> (assignedKey != PreferencesManager.DEFAULT_KEYCODE && keyCode == assignedKey)
+            else -> (keyCode == KEYCODE_MACRO_1 || (assignedKey != PreferencesManager.DEFAULT_KEYCODE && keyCode == assignedKey))
+        }
 
         if (isTargetKey) {
             if (action == KeyEvent.ACTION_DOWN) {
@@ -120,7 +170,7 @@ class SleepAccessibilityService : AccessibilityService() {
                     }
                     startActivity(setupIntent)
                 } else {
-                    Log.d(TAG, "Native key intercepted in app ($activePkg) -> Triggering Sleep Timer with ZERO Activity (Crunchyroll/ExoPlayer safe)")
+                    Log.d(TAG, "Native key intercepted in app ($activePkg) -> Triggering Sleep Timer with ZERO Activity")
                     val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
                     val wasPlaying = audioManager?.isMusicActive ?: false
                     TimerService.startOrIncrement(applicationContext, wasMusicActive = wasPlaying || !activePkg.isNullOrEmpty())
@@ -178,8 +228,35 @@ class SleepAccessibilityService : AccessibilityService() {
 
         interface KeyAssignListener {
             fun onKeyAssigned(keyCode: Int)
+            fun onAppTriggerAssigned(label: String, target: String)
             fun onForbiddenKeyDetected(keyCode: Int)
             fun onKeyListeningCancelled()
+        }
+
+        val LIVE_KEYCODES = setOf(
+            KeyEvent.KEYCODE_TV,
+            KeyEvent.KEYCODE_GUIDE,
+            KeyEvent.KEYCODE_WINDOW,
+            KeyEvent.KEYCODE_DVR,
+            170, 171, 172, 173, 183
+        )
+
+        val NETFLIX_KEYCODES = setOf(
+            KeyEvent.KEYCODE_BUTTON_3,
+            KeyEvent.KEYCODE_BUTTON_4,
+            KeyEvent.KEYCODE_APP_SWITCH,
+            98, 99
+        )
+
+        fun isLiveTvPackage(pkg: String): Boolean {
+            return pkg == "com.google.android.tv" ||
+                    pkg == "com.mitv.tvhome.michannel" ||
+                    pkg == "com.android.tv" ||
+                    pkg.contains("livechannels", ignoreCase = true)
+        }
+
+        fun isNetflixPackage(pkg: String): Boolean {
+            return pkg == "com.netflix.ninja" || pkg.contains("netflix", ignoreCase = true)
         }
 
         // System-critical keys protected from assignment (Ajustement 1)
