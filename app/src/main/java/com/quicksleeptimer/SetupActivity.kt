@@ -235,18 +235,33 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             }
         }
         lifecycleScope.launch {
-            prefsManager.triggerTargetFlow.collectLatest { target ->
-                updateTriggerTargetUi(target)
+            prefsManager.isLiveTriggerEnabledFlow.collectLatest {
+                updateTriggerTargetUi()
             }
         }
         lifecycleScope.launch {
-            prefsManager.assignedKeyCodeFlow.collectLatest { keyCode ->
-                updateAssignedKeyUi(keyCode)
+            prefsManager.isNetflixTriggerEnabledFlow.collectLatest {
+                updateTriggerTargetUi()
             }
         }
         lifecycleScope.launch {
-            prefsManager.assignedScanCodeFlow.collectLatest { _ ->
-                updateAssignedKeyUi(prefsManager.cachedAssignedKeyCode)
+            prefsManager.isStarTriggerEnabledFlow.collectLatest {
+                updateTriggerTargetUi()
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.triggerTargetFlow.collectLatest {
+                updateTriggerTargetUi()
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.assignedKeyCodeFlow.collectLatest {
+                updateTriggerTargetUi()
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.assignedScanCodeFlow.collectLatest {
+                updateTriggerTargetUi()
             }
         }
         lifecycleScope.launch {
@@ -510,20 +525,23 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     private fun setupTriggerModeControls() {
         binding.btnTriggerLive.setOnClickListener {
+            val nextState = !prefsManager.isLiveTriggerEnabled
             lifecycleScope.launch {
-                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
+                prefsManager.setLiveTriggerEnabled(nextState)
             }
         }
 
         binding.btnTriggerStar.setOnClickListener {
+            val nextState = !prefsManager.isStarTriggerEnabled
             lifecycleScope.launch {
-                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_STAR)
+                prefsManager.setStarTriggerEnabled(nextState)
             }
         }
 
         binding.btnTriggerNetflix.setOnClickListener {
+            val nextState = !prefsManager.isNetflixTriggerEnabled
             lifecycleScope.launch {
-                prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_NETFLIX)
+                prefsManager.setNetflixTriggerEnabled(nextState)
             }
         }
 
@@ -536,11 +554,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
     }
 
-    private fun updateTriggerTargetUi(target: String) {
-        val isLive = (target == PreferencesManager.TRIGGER_LIVE)
-        val isStar = (target == PreferencesManager.TRIGGER_STAR)
-        val isNetflix = (target == PreferencesManager.TRIGGER_NETFLIX)
-        val isCustom = (target == PreferencesManager.TRIGGER_CUSTOM)
+    private fun updateTriggerTargetUi() {
+        val isLive = prefsManager.isLiveTriggerEnabled
+        val isStar = prefsManager.isStarTriggerEnabled
+        val isNetflix = prefsManager.isNetflixTriggerEnabled
+        val isCustom = (prefsManager.cachedTriggerTarget == PreferencesManager.TRIGGER_CUSTOM && (prefsManager.cachedAssignedKeyCode > 0 || prefsManager.cachedAssignedScanCode > 0))
 
         binding.btnTriggerLive.text = if (isLive) "● Touche Live TV" else "○ Touche Live TV"
         binding.btnTriggerLive.setTextColor(getColor(if (isLive) R.color.tv_text_primary else R.color.tv_text_secondary))
@@ -551,36 +569,21 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         binding.btnTriggerNetflix.text = if (isNetflix) "● Touche Netflix" else "○ Touche Netflix"
         binding.btnTriggerNetflix.setTextColor(getColor(if (isNetflix) R.color.tv_text_primary else R.color.tv_text_secondary))
 
-        when {
-            isLive -> {
-                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Touche Live TV (Xiaomi Mi Box)"
-                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
-            }
-            isStar -> {
-                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Bouton Étoile (★) (Google TV)"
-                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
-            }
-            isNetflix -> {
-                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : Bouton Netflix (Interception native)"
-                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
-            }
-            isCustom -> {
-                val assignedKey = prefsManager.cachedAssignedKeyCode
-                val assignedScan = prefsManager.cachedAssignedScanCode
-                val keyLabel = SleepAccessibilityService.getFriendlyKeyName(assignedKey, assignedScan)
-                binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel"
-                binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
-            }
+        val activeList = mutableListOf<String>()
+        if (isLive) activeList.add("Live TV")
+        if (isNetflix) activeList.add("Netflix")
+        if (isStar) activeList.add("Étoile (★)")
+        if (isCustom) {
+            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(prefsManager.cachedAssignedKeyCode, prefsManager.cachedAssignedScanCode)
+            activeList.add(keyLabel)
         }
-    }
 
-    private fun updateAssignedKeyUi(keyCode: Int) {
-        val currentTarget = prefsManager.cachedTriggerTarget
-        if (currentTarget == PreferencesManager.TRIGGER_CUSTOM) {
-            val assignedScan = prefsManager.cachedAssignedScanCode
-            val keyLabel = SleepAccessibilityService.getFriendlyKeyName(keyCode, assignedScan)
-            binding.tvAssignedKeyLabel.text = "✓ Déclencheur actif : $keyLabel"
+        if (activeList.isNotEmpty()) {
+            binding.tvAssignedKeyLabel.text = "✓ Déclencheurs actifs : " + activeList.joinToString(", ")
             binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_ok))
+        } else {
+            binding.tvAssignedKeyLabel.text = "⚠️ Aucun déclencheur sélectionné"
+            binding.tvAssignedKeyLabel.setTextColor(getColor(R.color.tv_status_warning))
         }
     }
 
@@ -641,7 +644,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.tvAssignKeyFeedback.text = "✓ Touche assignée avec succès : $keyLabel"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE
-            updateTriggerTargetUi(PreferencesManager.TRIGGER_CUSTOM)
+            updateTriggerTargetUi()
         }
     }
 
@@ -656,7 +659,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.tvAssignKeyFeedback.text = "✓ Déclencheur assigné avec succès : $label"
             binding.tvAssignKeyFeedback.setTextColor(getColor(R.color.tv_status_ok))
             binding.tvAssignKeyFeedback.visibility = View.VISIBLE
-            updateTriggerTargetUi(target)
+            updateTriggerTargetUi()
         }
     }
 

@@ -35,6 +35,12 @@ class PreferencesManager(private val context: Context) {
         private set
     @Volatile var cachedTriggerTarget: String = DEFAULT_TRIGGER_TARGET
         private set
+    @Volatile var isLiveTriggerEnabled: Boolean = isXiaomiDevice()
+        private set
+    @Volatile var isNetflixTriggerEnabled: Boolean = isXiaomiDevice()
+        private set
+    @Volatile var isStarTriggerEnabled: Boolean = !isXiaomiDevice()
+        private set
     @Volatile var cachedAssignedKeyCode: Int = DEFAULT_KEYCODE
         private set
     @Volatile var cachedAssignedScanCode: Int = 0
@@ -71,6 +77,9 @@ class PreferencesManager(private val context: Context) {
                     cachedMaxDuration = prefs[KEY_MAX_DURATION] ?: DEFAULT_MAX_DURATION
                     cachedTriggerMode = prefs[KEY_TRIGGER_MODE] ?: MODE_ACCESSIBILITY
                     cachedTriggerTarget = prefs[KEY_TRIGGER_TARGET] ?: DEFAULT_TRIGGER_TARGET
+                    isLiveTriggerEnabled = prefs[KEY_TRIGGER_LIVE_ENABLED] ?: (cachedTriggerTarget == TRIGGER_LIVE || isXiaomiDevice())
+                    isNetflixTriggerEnabled = prefs[KEY_TRIGGER_NETFLIX_ENABLED] ?: (cachedTriggerTarget == TRIGGER_NETFLIX || isXiaomiDevice())
+                    isStarTriggerEnabled = prefs[KEY_TRIGGER_STAR_ENABLED] ?: (cachedTriggerTarget == TRIGGER_STAR || !isXiaomiDevice())
                     cachedAssignedKeyCode = prefs[KEY_ASSIGNED_KEYCODE] ?: DEFAULT_KEYCODE
                     cachedAssignedScanCode = prefs[KEY_ASSIGNED_SCANCODE] ?: 0
                     cachedHudDisplaySeconds = prefs[KEY_HUD_DISPLAY_SECONDS] ?: DEFAULT_HUD_SECONDS
@@ -90,6 +99,15 @@ class PreferencesManager(private val context: Context) {
     val maxDurationFlow: Flow<Int> = context.dataStore.data.map { it[KEY_MAX_DURATION] ?: DEFAULT_MAX_DURATION }
     val triggerModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_TRIGGER_MODE] ?: MODE_ACCESSIBILITY }
     val triggerTargetFlow: Flow<String> = context.dataStore.data.map { it[KEY_TRIGGER_TARGET] ?: DEFAULT_TRIGGER_TARGET }
+    val isLiveTriggerEnabledFlow: Flow<Boolean> = context.dataStore.data.map {
+        it[KEY_TRIGGER_LIVE_ENABLED] ?: (it[KEY_TRIGGER_TARGET] == TRIGGER_LIVE || isXiaomiDevice())
+    }
+    val isNetflixTriggerEnabledFlow: Flow<Boolean> = context.dataStore.data.map {
+        it[KEY_TRIGGER_NETFLIX_ENABLED] ?: (it[KEY_TRIGGER_TARGET] == TRIGGER_NETFLIX || isXiaomiDevice())
+    }
+    val isStarTriggerEnabledFlow: Flow<Boolean> = context.dataStore.data.map {
+        it[KEY_TRIGGER_STAR_ENABLED] ?: (it[KEY_TRIGGER_TARGET] == TRIGGER_STAR || !isXiaomiDevice())
+    }
     val assignedKeyCodeFlow: Flow<Int> = context.dataStore.data.map { it[KEY_ASSIGNED_KEYCODE] ?: DEFAULT_KEYCODE }
     val assignedScanCodeFlow: Flow<Int> = context.dataStore.data.map { it[KEY_ASSIGNED_SCANCODE] ?: 0 }
     val hudDisplaySecondsFlow: Flow<Int> = context.dataStore.data.map { it[KEY_HUD_DISPLAY_SECONDS] ?: DEFAULT_HUD_SECONDS }
@@ -123,6 +141,21 @@ class PreferencesManager(private val context: Context) {
     suspend fun setTriggerTarget(target: String) {
         cachedTriggerTarget = target
         context.dataStore.edit { it[KEY_TRIGGER_TARGET] = target }
+    }
+
+    suspend fun setLiveTriggerEnabled(enabled: Boolean) {
+        isLiveTriggerEnabled = enabled
+        context.dataStore.edit { it[KEY_TRIGGER_LIVE_ENABLED] = enabled }
+    }
+
+    suspend fun setNetflixTriggerEnabled(enabled: Boolean) {
+        isNetflixTriggerEnabled = enabled
+        context.dataStore.edit { it[KEY_TRIGGER_NETFLIX_ENABLED] = enabled }
+    }
+
+    suspend fun setStarTriggerEnabled(enabled: Boolean) {
+        isStarTriggerEnabled = enabled
+        context.dataStore.edit { it[KEY_TRIGGER_STAR_ENABLED] = enabled }
     }
 
     suspend fun setAssignedKeyCode(keyCode: Int) {
@@ -205,11 +238,15 @@ class PreferencesManager(private val context: Context) {
         const val TRIGGER_NETFLIX = "netflix"
         const val TRIGGER_CUSTOM = "custom"
 
+        fun isXiaomiDevice(): Boolean {
+            val manufacturer = android.os.Build.MANUFACTURER ?: ""
+            val model = android.os.Build.MODEL ?: ""
+            return manufacturer.contains("Xiaomi", ignoreCase = true) || model.contains("MIBOX", ignoreCase = true)
+        }
+
         val DEFAULT_TRIGGER_TARGET: String
             get() {
-                val manufacturer = android.os.Build.MANUFACTURER ?: ""
-                val model = android.os.Build.MODEL ?: ""
-                return if (manufacturer.contains("Xiaomi", ignoreCase = true) || model.contains("MIBOX", ignoreCase = true)) {
+                return if (isXiaomiDevice()) {
                     TRIGGER_LIVE
                 } else {
                     TRIGGER_STAR
@@ -235,6 +272,9 @@ class PreferencesManager(private val context: Context) {
         private val KEY_MAX_DURATION = intPreferencesKey("pref_max_duration")
         private val KEY_TRIGGER_MODE = stringPreferencesKey("pref_trigger_mode")
         private val KEY_TRIGGER_TARGET = stringPreferencesKey("pref_trigger_target")
+        val KEY_TRIGGER_LIVE_ENABLED = booleanPreferencesKey("pref_trigger_live_enabled")
+        val KEY_TRIGGER_NETFLIX_ENABLED = booleanPreferencesKey("pref_trigger_netflix_enabled")
+        val KEY_TRIGGER_STAR_ENABLED = booleanPreferencesKey("pref_trigger_star_enabled")
         private val KEY_ASSIGNED_KEYCODE = intPreferencesKey("pref_assigned_keycode")
         private val KEY_ASSIGNED_SCANCODE = intPreferencesKey("pref_assigned_scancode")
         private val KEY_HUD_DISPLAY_SECONDS = intPreferencesKey("pref_hud_display_seconds")

@@ -24,8 +24,8 @@ class NetflixInterceptActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         val prefs = PreferencesManager.getInstance(this)
-        if (prefs.cachedTriggerTarget != PreferencesManager.TRIGGER_NETFLIX) {
-            Log.d(TAG, "Netflix button pressed but active triggerTarget is ${prefs.cachedTriggerTarget} -> Ignoring")
+        if (!prefs.isNetflixTriggerEnabled) {
+            Log.d(TAG, "Netflix button pressed but isNetflixTriggerEnabled is false -> Ignoring")
             finish()
             return
         }

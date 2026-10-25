@@ -82,20 +82,20 @@ class SleepAccessibilityService : AccessibilityService() {
             // 1. Learning Mode : If user presses a hardcoded button (Live or Netflix) that forces app launch
             if (isListeningForKeyAssignation) {
                 if (isLiveTvPackage(pkg)) {
-                    Log.d(TAG, "Live TV app ($pkg) launched during key assignation -> Assigning TRIGGER_LIVE")
+                    Log.d(TAG, "Live TV app ($pkg) launched during key assignation -> Enabling Live TV trigger")
                     isListeningForKeyAssignation = false
                     dismissInterceptedApp(pkg, packageName)
                     serviceScope.launch {
-                        prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_LIVE)
+                        prefsManager.setLiveTriggerEnabled(true)
                     }
                     keyAssignListener?.onAppTriggerAssigned("Touche Live TV", PreferencesManager.TRIGGER_LIVE)
                     return
                 } else if (isNetflixPackage(pkg)) {
-                    Log.d(TAG, "Netflix app ($pkg) launched during key assignation -> Assigning TRIGGER_NETFLIX")
+                    Log.d(TAG, "Netflix app ($pkg) launched during key assignation -> Enabling Netflix trigger")
                     isListeningForKeyAssignation = false
                     dismissInterceptedApp(pkg, packageName)
                     serviceScope.launch {
-                        prefsManager.setTriggerTarget(PreferencesManager.TRIGGER_NETFLIX)
+                        prefsManager.setNetflixTriggerEnabled(true)
                     }
                     keyAssignListener?.onAppTriggerAssigned("Touche Netflix", PreferencesManager.TRIGGER_NETFLIX)
                     return
@@ -103,44 +103,39 @@ class SleepAccessibilityService : AccessibilityService() {
             }
 
             // 2. Autonomous Runtime Interception of hardcoded buttons (Live / Netflix)
-            val currentTarget = prefsManager.cachedTriggerTarget
-            val shouldIntercept = (currentTarget == PreferencesManager.TRIGGER_LIVE && isLiveTvPackage(pkg)) ||
-                    (currentTarget == PreferencesManager.TRIGGER_NETFLIX && isNetflixPackage(pkg))
+            if (isLiveTvPackage(pkg)) {
+                if (prefsManager.isLiveTriggerEnabled) {
+                    // ALWAYS immediately dismiss the Live TV window with BACK
+                    Log.d(TAG, "Live TV window detected: $pkg ($className) -> Dismissing via BACK")
+                    performGlobalAction(GLOBAL_ACTION_BACK)
 
-            if (shouldIntercept) {
-                val now = android.os.SystemClock.uptimeMillis()
-                if (now - lastInterceptTime > 800L) {
-                    lastInterceptTime = now
-                    val targetAppToRestore = lastLegitimatePackage
-                    val isOnLauncher = isLauncherOrSettings(targetAppToRestore)
-                    Log.d(TAG, "Autonomous interception of $pkg ($currentTarget)! isOnLauncher=$isOnLauncher, restore=$targetAppToRestore")
+                    val now = android.os.SystemClock.uptimeMillis()
+                    if (now - lastInterceptTime > 1000L) {
+                        lastInterceptTime = now
+                        val targetAppToRestore = lastLegitimatePackage
+                        val isOnLauncher = isLauncherOrSettings(targetAppToRestore)
+                        Log.d(TAG, "Live TV trigger fired: isOnLauncher=$isOnLauncher, restore=$targetAppToRestore")
 
-                    if (isOnLauncher) {
-                        Log.d(TAG, "Live TV intercepted on launcher -> Launching SetupActivity and dismissing Live TV window")
-                        val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            putExtra("open_settings", true)
+                        if (isOnLauncher) {
+                            Log.d(TAG, "Live TV on launcher -> Opening SetupActivity")
+                            val setupIntent = Intent(applicationContext, SetupActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                        Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                putExtra("open_settings", true)
+                            }
+                            startActivity(setupIntent)
+                        } else {
+                            Log.d(TAG, "Live TV in app ($targetAppToRestore) -> Triggering Sleep Timer HUD")
+                            val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                            val wasPlaying = audioManager?.isMusicActive ?: false
+                            TimerService.startOrIncrement(
+                                applicationContext,
+                                wasMusicActive = wasPlaying || !targetAppToRestore.isNullOrEmpty()
+                            )
                         }
-                        startActivity(setupIntent)
-
-                        // Clean single back dismissal to clear Live Channels
-                        serviceScope.launch {
-                            kotlinx.coroutines.delay(80)
-                            performGlobalAction(GLOBAL_ACTION_BACK)
-                        }
-                    } else {
-                        Log.d(TAG, "Live TV intercepted in app ($targetAppToRestore) -> Triggering Sleep Timer HUD")
-                        val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                        val wasPlaying = audioManager?.isMusicActive ?: false
-                        TimerService.startOrIncrement(
-                            applicationContext,
-                            wasMusicActive = wasPlaying || !targetAppToRestore.isNullOrEmpty()
-                        )
-                        // Single dismissal to reveal the underlying video app without disrupting playback
-                        dismissInterceptedApp(pkg, targetAppToRestore)
                     }
+                    return
                 }
             }
         }
@@ -252,21 +247,16 @@ class SleepAccessibilityService : AccessibilityService() {
         val assignedKey = prefsManager.cachedAssignedKeyCode
         val assignedScan = prefsManager.cachedAssignedScanCode
 
-        val isTargetKey = when (triggerTarget) {
-            PreferencesManager.TRIGGER_LIVE -> {
-                (keyCode in LIVE_KEYCODES || scanCode in LIVE_SCANCODES)
-            }
-            PreferencesManager.TRIGGER_NETFLIX -> {
-                (keyCode in NETFLIX_KEYCODES || scanCode in NETFLIX_SCANCODES)
-            }
-            PreferencesManager.TRIGGER_CUSTOM -> {
-                (assignedKey > 0 && keyCode == assignedKey) || (assignedScan > 0 && scanCode == assignedScan)
-            }
-            else -> {
-                // TRIGGER_STAR (Google TV Streamer Star button is keyCode 313)
-                (keyCode == KEYCODE_MACRO_1 || keyCode == 313) ||
-                (assignedKey > 0 && keyCode == assignedKey) ||
-                (assignedScan > 0 && scanCode == assignedScan)
+        var isTargetKey = false
+        if (prefsManager.isLiveTriggerEnabled && (keyCode in LIVE_KEYCODES || scanCode in LIVE_SCANCODES)) {
+            isTargetKey = true
+        } else if (prefsManager.isNetflixTriggerEnabled && (keyCode in NETFLIX_KEYCODES || scanCode in NETFLIX_SCANCODES)) {
+            isTargetKey = true
+        } else if (prefsManager.isStarTriggerEnabled && (keyCode == KEYCODE_MACRO_1 || keyCode == 313)) {
+            isTargetKey = true
+        } else if (triggerTarget == PreferencesManager.TRIGGER_CUSTOM || assignedKey > 0 || assignedScan > 0) {
+            if ((assignedKey > 0 && keyCode == assignedKey) || (assignedScan > 0 && scanCode == assignedScan)) {
+                isTargetKey = true
             }
         }
 
