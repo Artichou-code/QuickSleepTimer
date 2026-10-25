@@ -6,6 +6,18 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.3.2] - 2026-10-25
+
+### 📺 Défilement Centré Intelligent Spécial TV (`TvScrollView`)
+* **Anticipation & Centrage Automatique du Focus :**
+  - Remplacement du défilement standard Android (qui attendait que les boutons touchent le bord de l'écran pour défiler) par un composant sur-mesure `TvScrollView`.
+  - Calcul dynamique en temps réel (`computeScrollDeltaToGetChildRectOnScreen`) qui aligne systématiquement le centre de l'élément sélectionné avec le centre vertical de l'écran de télévision.
+  - Les boutons actifs ne se retrouvent plus jamais collés ou coupés contre le cadre supérieur ou inférieur de la télévision.
+* **Marge de Respiration Basse Étendue :**
+  - Augmentation du rembourrage inférieur à `160dp` pour permettre aux derniers boutons d'action d'être confortablement centrés sans heurter le bas de l'écran.
+
+---
+
 ## [1.3.1] - 2026-10-25
 
 ### 🔧 Ajustements Visuels & Finitions Haute Précision
