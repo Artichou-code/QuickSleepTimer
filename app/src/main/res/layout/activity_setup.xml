@@ -767,6 +767,16 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp"
+                android:layout_marginBottom="6dp"
+                android:text="💡 Note : Sur Xiaomi, assigner la touche Live TV au lancement d'une autre application (Crunchyroll, etc.) est plus fluide que le minuteur en raison du comportement matériel de Live Channels."
+                android:textColor="@color/tv_text_secondary"
+                android:textSize="11sp" />
+
             <!-- ROW 2 : NETFLIX -->
             <LinearLayout
                 android:id="@+id/btnRowNetflix"

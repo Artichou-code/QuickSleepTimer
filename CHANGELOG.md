@@ -6,7 +6,25 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
-## [1.3.2] - 2026-10-25
+## [1.3.7] - 2026-10-26
+
+### 🎮 Personnalisation & Remapping Indépendant des Touches (Style Button Mapper)
+* **Configuration Individuelle par Bouton :**
+  - Chaque touche matérielle de la télécommande dispose désormais de sa propre affectation totalement autonome :
+    - **📺 Touche Live TV (Xiaomi)**
+    - **🍿 Touche Netflix**
+    - **★ Touche Étoile (Google TV Streamer)**
+    - **⚡ Touche Personnalisée (Apprentissage direct avec n'importe quelle touche de télécommande)**
+  - Actions disponibles pour chaque touche :
+    - `🌙 Minuteur de Veille` (QuickSleepTimer)
+    - `🚀 Lancer une application TV` (avec sélecteur complet incluant les icônes de toutes les applications TV installées : Crunchyroll, YouTube, Deezer, VLC, etc.)
+    - `❌ Désactivé` (ne rien faire / comportement système)
+* **Support Simultané Multi-Boutons :**
+  - Possibilité d'assigner par exemple la touche **Netflix** au lancement direct de **Crunchyroll**, tout en conservant la touche **Live TV** ou **Étoile** pour piloter le minuteur de veille.
+* **Note Technique sur la Touche Live TV (Xiaomi Mi Box / Mi TV) :**
+  - Sur les appareils Xiaomi, le firmware intercepte la touche physique Live TV (`KEYCODE_TV` / 170) au niveau matériel très bas (`PhoneWindowManager.interceptKeyBeforeQueueing`) et force le démarrage direct de l'application *Live Channels* (`com.google.android.tv`).
+  - Bien que QuickSleepTimer injecte un bouclier furtif et un signal retour arrière automatique pour étouffer cette fenêtre, un bref flash bleu de l'écran Live peut parfois rester perceptible lors de l'appel du minuteur.
+  - **Recommandation :** L'assignation de la touche Live TV au **lancement direct d'une autre application** (Crunchyroll, etc.) fonctionne beaucoup plus proprement et harmonieusement, car la nouvelle application prend immédiatement et naturellement le relais sur Live Channels. Pour le déclenchement du minuteur sans aucun artefact visuel, l'utilisation de la touche Netflix, de la touche Étoile (★) ou d'une touche personnalisée est recommandée.
 
 ### 📺 Défilement Centré Intelligent Spécial TV (`TvScrollView`)
 * **Anticipation & Centrage Automatique du Focus :**

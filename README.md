@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV-00875A.svg)](https://android.com/tv/)
 [![API](https://img.shields.io/badge/API-28%2B%20%28Android%209%20to%2014%2B%29-green.svg)](#)
-[![Version](https://img.shields.io/badge/Version-1.3.2-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.7-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
 [![No Internet Permission](https://img.shields.io/badge/Privacy-100%25%20Offline%20%28No%20Internet%29-brightgreen.svg)](#transparence--vie-privée)
 
 [Français](#-français) | [English](#-english)
@@ -43,6 +43,22 @@ Sur les téléviseurs modernes **Android TV** et le **Google TV Streamer 4K**, c
   - Diminue le volume sonore pas à pas vers zéro sur toute la durée ou sur les 5 / 10 dernières minutes. Le son remonte doucement si vous rajoutez du temps.
 * **Extinction Automatique Matérielle :**
   - Verrouillage Android à l'échéance et extinction automatique de l'écran et des périphériques audio via le protocole HDMI-CEC.
+* **Remapping Indépendant des Touches Télécommande (Style Button Mapper) :**
+  - Personnalisez individuellement l'action de chaque touche disponible :
+    - **📺 Touche Live TV (Xiaomi)**
+    - **🍿 Touche Netflix**
+    - **★ Touche Étoile (Google TV Streamer)**
+    - **⚡ Touche Personnalisée (Apprentissage direct avec n'importe quelle touche)**
+  - Pour chaque touche, choisissez entre :
+    - `🌙 Minuteur de Veille` (QuickSleepTimer)
+    - `🚀 Lancer une application TV` (sélectionnez Crunchyroll, YouTube, Deezer, etc. dans la liste installée)
+    - `❌ Désactivé` (aucun traitement)
+  - Vous pouvez combiner les actions : par exemple, Netflix lance Crunchyroll et la touche Étoile ou une touche apprise pilote le minuteur !
+
+> [!NOTE]
+> **Précision concernant la Touche Live TV sur télécommandes Xiaomi :**
+> Sur le matériel Xiaomi (Mi Box, Mi TV Stick), la touche Live TV est interceptée par le firmware (`PhoneWindowManager`) qui force le lancement matériel de l'application système *Live Channels* (`com.google.android.tv`). Même si QuickSleepTimer utilise un bouclier furtif et renvoie un retour arrière automatique, un bref écran bleu Live TV peut être visible avant fermeture lors de l'appel du minuteur.
+> **Observation pratique :** L'assignation de la touche Live TV au **lancement direct d'une autre application** (Crunchyroll, etc.) fonctionne beaucoup plus proprement et sans clignotement bleu, car la nouvelle application prend immédiatement le relais sur Live Channels. Pour le minuteur de veille sans aucun clignotement, privilégiez la touche Netflix, la touche Étoile (★) ou une touche réassignée.
 
 ---
 
@@ -127,6 +143,18 @@ On modern **Android TV** and **Google TV Streamer 4K** devices, this simple feat
   - Gently decreases audio volume down to zero across the timer duration or over the final 5 / 10 minutes.
 * **Hardware Sleep via HDMI-CEC:**
   - Native global lock triggers TV and connected soundbar standby via HDMI-CEC.
+* **Per-Button Remote Remapping (Button Mapper Style):**
+  - Individually configure actions for any supported remote key (Live TV, Netflix, Star ★, or custom learned key).
+  - Assign each key to:
+    - `🌙 Sleep Timer` (QuickSleepTimer)
+    - `🚀 Launch any installed TV app` (Crunchyroll, YouTube, Deezer, etc.)
+    - `❌ Disabled`
+  - Combinations are fully supported (e.g. Netflix launches Crunchyroll, while Star or a learned key controls the Sleep Timer).
+
+> [!NOTE]
+> **Technical Note on Xiaomi Live TV Button:**
+> On Xiaomi remotes (Mi Box, Mi TV), the Live TV key is intercepted at the hardware firmware level (`PhoneWindowManager`), forcing the launch of `com.google.android.tv` (Live Channels). While QuickSleepTimer suppresses this with a stealth shield and automatic back navigation, a brief blue flash can sometimes appear when launching the sleep timer.
+> **Tip:** Assigning the Live TV button to **directly launch another TV app** (e.g. Crunchyroll, YouTube) works much more cleanly without blue flashes, as the new target app immediately takes foreground focus over Live Channels. For the sleep timer, using the Netflix key, Star (★) key, or a learned custom key provides zero-glitch operation.
 
 ---
 
