@@ -135,7 +135,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName
         } catch (e: Exception) {
-            "1.3.7"
+            "1.3.8"
         }
         binding.tvAppVersion.text = "QuickSleepTimer v$versionName"
 
@@ -278,6 +278,12 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         }
         lifecycleScope.launch {
             prefsManager.appLabelStarFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.actionAppsFlow.collectLatest { updateButtonMappingUi() }
+        }
+        lifecycleScope.launch {
+            prefsManager.appLabelAppsFlow.collectLatest { updateButtonMappingUi() }
         }
         lifecycleScope.launch {
             prefsManager.actionCustomFlow.collectLatest { updateButtonMappingUi() }
@@ -558,6 +564,10 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             showButtonActionDialog("live", "Touche Live TV (Xiaomi)")
         }
 
+        binding.btnRowApps.setOnClickListener {
+            showButtonActionDialog("apps", "Touche Apps (9 points - Xiaomi)")
+        }
+
         binding.btnRowNetflix.setOnClickListener {
             showButtonActionDialog("netflix", "Touche Netflix")
         }
@@ -591,6 +601,24 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             else -> {
                 binding.tvStatusLive.text = "Action : ❌ Désactivée"
                 binding.tvStatusLive.setTextColor(getColor(R.color.tv_text_secondary))
+            }
+        }
+
+        // Row Apps (9 points - Xiaomi)
+        val appsAction = prefsManager.cachedActionApps
+        val appsLabel = prefsManager.cachedAppLabelApps
+        when (appsAction) {
+            PreferencesManager.ACTION_TIMER -> {
+                binding.tvStatusApps.text = "Action : 🌙 Minuteur de Veille"
+                binding.tvStatusApps.setTextColor(getColor(R.color.tv_accent))
+            }
+            PreferencesManager.ACTION_APP -> {
+                binding.tvStatusApps.text = "Action : 🚀 ${appsLabel.ifEmpty { "Application" }}"
+                binding.tvStatusApps.setTextColor(getColor(R.color.tv_accent))
+            }
+            else -> {
+                binding.tvStatusApps.text = "Action : ❌ Désactivée (Tiroir d'apps par défaut)"
+                binding.tvStatusApps.setTextColor(getColor(R.color.tv_text_secondary))
             }
         }
 
@@ -661,11 +689,19 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
     }
 
     private fun showButtonActionDialog(buttonId: String, buttonTitle: String) {
-        val options = arrayOf(
-            "🌙 Minuteur de Veille",
-            "🚀 Lancer une application...",
-            "❌ Désactiver cette touche"
-        )
+        val options = if (buttonId == "apps") {
+            arrayOf(
+                "🌙 Minuteur de Veille",
+                "🚀 Lancer une application...",
+                "❌ Par défaut (Tiroir d'apps d'origine)"
+            )
+        } else {
+            arrayOf(
+                "🌙 Minuteur de Veille",
+                "🚀 Lancer une application...",
+                "❌ Désactiver cette touche"
+            )
+        }
 
         AlertDialog.Builder(this)
             .setTitle(buttonTitle)
@@ -675,6 +711,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                         lifecycleScope.launch {
                             when (buttonId) {
                                 "live" -> prefsManager.setLiveConfig(PreferencesManager.ACTION_TIMER)
+                                "apps" -> prefsManager.setAppsConfig(PreferencesManager.ACTION_TIMER)
                                 "netflix" -> prefsManager.setNetflixConfig(PreferencesManager.ACTION_TIMER)
                                 "star" -> prefsManager.setStarConfig(PreferencesManager.ACTION_TIMER)
                                 "custom" -> prefsManager.setCustomConfig(PreferencesManager.ACTION_TIMER)
@@ -689,6 +726,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                         lifecycleScope.launch {
                             when (buttonId) {
                                 "live" -> prefsManager.setLiveConfig(PreferencesManager.ACTION_DISABLED)
+                                "apps" -> prefsManager.setAppsConfig(PreferencesManager.ACTION_DISABLED)
                                 "netflix" -> prefsManager.setNetflixConfig(PreferencesManager.ACTION_DISABLED)
                                 "star" -> prefsManager.setStarConfig(PreferencesManager.ACTION_DISABLED)
                                 "custom" -> prefsManager.setCustomConfig(PreferencesManager.ACTION_DISABLED)
@@ -815,6 +853,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                 lifecycleScope.launch {
                     when (buttonId) {
                         "live" -> prefsManager.setLiveConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
+                        "apps" -> prefsManager.setAppsConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
                         "netflix" -> prefsManager.setNetflixConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
                         "star" -> prefsManager.setStarConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
                         "custom" -> prefsManager.setCustomConfig(PreferencesManager.ACTION_APP, selected.pkg, selected.label)
@@ -1125,6 +1164,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.btnRestoreVolume,
             binding.btnTestVolumeFade,
             binding.btnRowLive,
+            binding.btnRowApps,
             binding.btnRowNetflix,
             binding.btnRowStar,
             binding.btnRowCustom,

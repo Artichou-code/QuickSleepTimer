@@ -6,6 +6,19 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.3.8] - 2026-10-26
+
+### 🔘 Séparation & Support Dédié de la Touche Apps (9 points Xiaomi)
+* **Différenciation Complète de la Touche Live TV et de la Touche Apps (9 points) :**
+  - La touche ornée d'une grille de 9 points (`ALL_APPS`, Scancode 580 / Keycode 284) était auparavant assimilée par erreur à la touche Live TV, ce qui provoquait un conflit et bloquait son rôle d'origine.
+  - Les codes `580` et `284` ont été retirés de la liste des déclencheurs Live TV. La touche Live TV et la touche Apps sont désormais 100% indépendantes.
+* **Nouvelle Ligne de Configuration Dédiée (Section 4) :**
+  - Ajout de la ligne **㗊 Touche Apps (9 points - Xiaomi)** dans les paramètres de télécommande.
+  - Par défaut, l'action est configurée sur `❌ Désactivée (Tiroir d'apps par défaut)` : elle n'est plus bloquée ni interceptée et conserve son comportement système normal vers le tiroir d'applications ou le launcher (Projectivy).
+  - L'utilisateur peut librement l'assigner à `🌙 Minuteur de Veille` ou à `🚀 Lancer une application TV` au choix.
+
+---
+
 ## [1.3.7] - 2026-10-26
 
 ### 🎮 Personnalisation & Remapping Indépendant des Touches (Style Button Mapper)

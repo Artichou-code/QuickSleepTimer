@@ -56,6 +56,13 @@ class PreferencesManager(private val context: Context) {
     @Volatile var cachedAppLabelStar: String = ""
         private set
 
+    @Volatile var cachedActionApps: String = ACTION_DISABLED
+        private set
+    @Volatile var cachedAppPkgApps: String = ""
+        private set
+    @Volatile var cachedAppLabelApps: String = ""
+        private set
+
     @Volatile var cachedActionCustom: String = ACTION_DISABLED
         private set
     @Volatile var cachedAppPkgCustom: String = ""
@@ -138,6 +145,10 @@ class PreferencesManager(private val context: Context) {
                     cachedAppPkgStar = prefs[KEY_APP_PKG_STAR] ?: if (cachedActionStar == ACTION_APP) legacyPkg else ""
                     cachedAppLabelStar = prefs[KEY_APP_LABEL_STAR] ?: if (cachedActionStar == ACTION_APP) legacyLabel else ""
 
+                    cachedActionApps = prefs[KEY_ACTION_APPS] ?: ACTION_DISABLED
+                    cachedAppPkgApps = prefs[KEY_APP_PKG_APPS] ?: ""
+                    cachedAppLabelApps = prefs[KEY_APP_LABEL_APPS] ?: ""
+
                     cachedActionCustom = prefs[KEY_ACTION_CUSTOM] ?: run {
                         if (legacyTarget == TRIGGER_CUSTOM) {
                             if (legacyAction == ACTION_APP) ACTION_APP else ACTION_TIMER
@@ -183,6 +194,11 @@ class PreferencesManager(private val context: Context) {
         it[KEY_ACTION_STAR] ?: if (it[KEY_TRIGGER_STAR_ENABLED] == true || !isXiaomiDevice()) ACTION_TIMER else ACTION_DISABLED
     }
     val appLabelStarFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_LABEL_STAR] ?: "" }
+
+    val actionAppsFlow: Flow<String> = context.dataStore.data.map {
+        it[KEY_ACTION_APPS] ?: ACTION_DISABLED
+    }
+    val appLabelAppsFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_LABEL_APPS] ?: "" }
 
     val actionCustomFlow: Flow<String> = context.dataStore.data.map {
         it[KEY_ACTION_CUSTOM] ?: ACTION_DISABLED
@@ -250,6 +266,17 @@ class PreferencesManager(private val context: Context) {
             it[KEY_ACTION_STAR] = action
             it[KEY_APP_PKG_STAR] = appPkg
             it[KEY_APP_LABEL_STAR] = appLabel
+        }
+    }
+
+    suspend fun setAppsConfig(action: String, appPkg: String = "", appLabel: String = "") {
+        cachedActionApps = action
+        cachedAppPkgApps = appPkg
+        cachedAppLabelApps = appLabel
+        context.dataStore.edit {
+            it[KEY_ACTION_APPS] = action
+            it[KEY_APP_PKG_APPS] = appPkg
+            it[KEY_APP_LABEL_APPS] = appLabel
         }
     }
 
@@ -397,6 +424,10 @@ class PreferencesManager(private val context: Context) {
         val KEY_ACTION_STAR = stringPreferencesKey("pref_action_star")
         val KEY_APP_PKG_STAR = stringPreferencesKey("pref_app_pkg_star")
         val KEY_APP_LABEL_STAR = stringPreferencesKey("pref_app_label_star")
+
+        val KEY_ACTION_APPS = stringPreferencesKey("pref_action_apps")
+        val KEY_APP_PKG_APPS = stringPreferencesKey("pref_app_pkg_apps")
+        val KEY_APP_LABEL_APPS = stringPreferencesKey("pref_app_label_apps")
 
         val KEY_ACTION_CUSTOM = stringPreferencesKey("pref_action_custom")
         val KEY_APP_PKG_CUSTOM = stringPreferencesKey("pref_app_pkg_custom")

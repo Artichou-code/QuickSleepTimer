@@ -317,6 +317,11 @@ class SleepAccessibilityService : AccessibilityService() {
             matchedAction = prefsManager.cachedActionStar
             matchedPkg = prefsManager.cachedAppPkgStar
             matchedLabel = "Étoile"
+        } else if (prefsManager.cachedActionApps != PreferencesManager.ACTION_DISABLED &&
+            (keyCode in APPS_KEYCODES || scanCode in APPS_SCANCODES)) {
+            matchedAction = prefsManager.cachedActionApps
+            matchedPkg = prefsManager.cachedAppPkgApps
+            matchedLabel = "Apps (9 points)"
         } else if (prefsManager.cachedActionLive != PreferencesManager.ACTION_DISABLED &&
             (keyCode in LIVE_KEYCODES || scanCode in LIVE_SCANCODES)) {
             matchedAction = prefsManager.cachedActionLive
@@ -408,14 +413,18 @@ class SleepAccessibilityService : AccessibilityService() {
             fun onKeyListeningCancelled()
         }
 
-        val LIVE_SCANCODES = setOf(580, 170, 171, 173, 183, 401)
+        val LIVE_SCANCODES = setOf(170, 171, 173, 183)
         val LIVE_KEYCODES = setOf(
             KeyEvent.KEYCODE_TV,          // 170
             KeyEvent.KEYCODE_WINDOW,      // 171
             KeyEvent.KEYCODE_DVR,         // 173
-            KeyEvent.KEYCODE_BUTTON_2,    // 189 (Xiaomi vendor Live TV keycode)
+            170, 171, 173, 183
+        )
+
+        val APPS_SCANCODES = setOf(580)
+        val APPS_KEYCODES = setOf(
             KeyEvent.KEYCODE_ALL_APPS,    // 284
-            170, 171, 173, 183, 189, 284
+            284
         )
 
         val NETFLIX_SCANCODES = setOf(393)
@@ -474,8 +483,8 @@ class SleepAccessibilityService : AccessibilityService() {
             if (scanCode == 393 || keyCode == 1001) return "Bouton Netflix (1001/393)"
             if (scanCode == 399 || keyCode == 97) return "Bouton Prime Video (97/399)"
             if (scanCode == 400 || keyCode == 99) return "Bouton YouTube (99/400)"
-            if (scanCode == 401 || keyCode == 98) return "Bouton Apps Xiaomi (98/401)"
-            if (scanCode == 580 || keyCode == 284) return "Bouton Live / Apps (284/580)"
+            if (scanCode == 401 || keyCode == 98) return "Bouton Xiaomi (98/401)"
+            if (scanCode == 580 || keyCode == 284) return "Bouton Apps (9 points) (284/580)"
 
             return when (keyCode) {
                 KEYCODE_MACRO_1, 313 -> "Bouton Étoile (★)"
@@ -483,7 +492,7 @@ class SleepAccessibilityService : AccessibilityService() {
                 KeyEvent.KEYCODE_GUIDE -> "Touche Guide / EPG"
                 KeyEvent.KEYCODE_DVR, 173 -> "Touche DVR / Enregistrement"
                 KeyEvent.KEYCODE_WINDOW, 171 -> "Touche Live / TV Window"
-                KeyEvent.KEYCODE_ALL_APPS, 284 -> "Touche Apps / Live"
+                KeyEvent.KEYCODE_ALL_APPS, 284 -> "Touche Apps (9 points)"
                 KeyEvent.KEYCODE_BUTTON_1, 96 -> "Bouton Personnalisé 1"
                 KeyEvent.KEYCODE_BUTTON_2, 97 -> "Bouton Prime Video"
                 KeyEvent.KEYCODE_BUTTON_3, 98 -> "Bouton Netflix / Apps"

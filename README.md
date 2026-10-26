@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV-00875A.svg)](https://android.com/tv/)
 [![API](https://img.shields.io/badge/API-28%2B%20%28Android%209%20to%2014%2B%29-green.svg)](#)
-[![Version](https://img.shields.io/badge/Version-1.3.7-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.8-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
 [![No Internet Permission](https://img.shields.io/badge/Privacy-100%25%20Offline%20%28No%20Internet%29-brightgreen.svg)](#transparence--vie-privée)
 
 [Français](#-français) | [English](#-english)
@@ -46,13 +46,14 @@ Sur les téléviseurs modernes **Android TV** et le **Google TV Streamer 4K**, c
 * **Remapping Indépendant des Touches Télécommande (Style Button Mapper) :**
   - Personnalisez individuellement l'action de chaque touche disponible :
     - **📺 Touche Live TV (Xiaomi)**
+    - **㗊 Touche Apps (9 points - Xiaomi)**
     - **🍿 Touche Netflix**
     - **★ Touche Étoile (Google TV Streamer)**
     - **⚡ Touche Personnalisée (Apprentissage direct avec n'importe quelle touche)**
   - Pour chaque touche, choisissez entre :
     - `🌙 Minuteur de Veille` (QuickSleepTimer)
     - `🚀 Lancer une application TV` (sélectionnez Crunchyroll, YouTube, Deezer, etc. dans la liste installée)
-    - `❌ Désactivé` (aucun traitement)
+    - `❌ Désactivé` (aucun traitement / comportement système d'origine)
   - Vous pouvez combiner les actions : par exemple, Netflix lance Crunchyroll et la touche Étoile ou une touche apprise pilote le minuteur !
 
 > [!NOTE]
@@ -144,11 +145,11 @@ On modern **Android TV** and **Google TV Streamer 4K** devices, this simple feat
 * **Hardware Sleep via HDMI-CEC:**
   - Native global lock triggers TV and connected soundbar standby via HDMI-CEC.
 * **Per-Button Remote Remapping (Button Mapper Style):**
-  - Individually configure actions for any supported remote key (Live TV, Netflix, Star ★, or custom learned key).
+  - Individually configure actions for any supported remote key (Live TV, 9-dot Apps key, Netflix, Star ★, or custom learned key).
   - Assign each key to:
     - `🌙 Sleep Timer` (QuickSleepTimer)
     - `🚀 Launch any installed TV app` (Crunchyroll, YouTube, Deezer, etc.)
-    - `❌ Disabled`
+    - `❌ Disabled` (default system behavior)
   - Combinations are fully supported (e.g. Netflix launches Crunchyroll, while Star or a learned key controls the Sleep Timer).
 
 > [!NOTE]
