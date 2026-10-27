@@ -57,6 +57,19 @@
     <string name="volume_restore_yes">OUI (Volume initial restauré)</string>
     <string name="volume_restore_no">NON (Volume reste coupé)</string>
 
+    <!-- Soft Wake-up / Progressive Startup -->
+    <string name="section_soft_wake">Démarrage en Douceur (Réveil Progressif)</string>
+    <string name="soft_wake_title">Luminosité progressive au démarrage</string>
+    <string name="soft_wake_desc">Au démarrage ou à la sortie de veille pendant la nuit, l\'écran démarre tamisé et monte doucement à sa luminosité normale pour ne pas éblouir les yeux.</string>
+    <string name="soft_wake_schedule_label">Plage horaire active :</string>
+    <string name="soft_wake_duration_label">Durée de montée progressive :</string>
+    <string name="soft_wake_intensity_label">Obscurité au réveil :</string>
+    <string name="btn_test_soft_wake">Tester la simulation (15s)</string>
+    <string name="btn_stop_test_soft_wake">Arrêter la simulation ⏹</string>
+    <string name="hud_soft_wake_started">🌅 Réveil en douceur (%1$d min)</string>
+    <string name="hud_soft_wake_cancelled">🌅 Réveil en douceur désactivé</string>
+    <string name="hud_soft_wake_cancelled_sub">Pleine luminosité rétablie</string>
+
     <!-- Actions & Tests -->
     <string name="btn_simulate_press">Simuler un appui télécommande</string>
     <string name="btn_test_sleep">Tester la mise en veille immédiate</string>

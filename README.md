@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Google%20TV-00875A.svg)](https://android.com/tv/)
 [![API](https://img.shields.io/badge/API-28%2B%20%28Android%209%20to%2014%2B%29-green.svg)](#)
-[![Version](https://img.shields.io/badge/Version-1.3.8-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
+[![Version](https://img.shields.io/badge/Version-1.3.9-blueviolet.svg)](https://github.com/Artichou-code/QuickSleepTimer/releases)
 [![No Internet Permission](https://img.shields.io/badge/Privacy-100%25%20Offline%20%28No%20Internet%29-brightgreen.svg)](#transparence--vie-privée)
 
 [Français](#-français) | [English](#-english)
@@ -41,6 +41,10 @@ Sur les téléviseurs modernes **Android TV** et le **Google TV Streamer 4K**, c
   - **Recul intelligent :** Si vous rajoutez du temps alors que l'écran est déjà sombre, la luminosité remonte doucement sur 1,5 seconde proportionnellement au temps ajouté, évitant de rester bloqué dans le noir ou de subir un flash blanc éblouissant.
 * **Baisse de Volume Progressive (Audio Fade Out) :**
   - Diminue le volume sonore pas à pas vers zéro sur toute la durée ou sur les 5 / 10 dernières minutes. Le son remonte doucement si vous rajoutez du temps.
+* **Réveil en Douceur & Démarrage Progressif Nocturne (Soft Wake-up) :**
+  - Protège vos yeux des éblouissements violents (« explosion des yeux ») lors de l'allumage de la TV la nuit ou au petit matin.
+  - Dès l'allumage pendant la plage horaire définie (par ex. `23:00 → 08:00`), l'écran démarre très assombri (filtre noir à 85%) puis augmente sa luminosité de façon douce et progressive vers 100% sur la durée choisie (**1 à 30 minutes**).
+  - Possibilité d'annuler instantanément la transition d'un simple appui sur la touche minuteur pour retrouver la pleine luminosité immédiatement.
 * **Extinction Automatique Matérielle :**
   - Verrouillage Android à l'échéance et extinction automatique de l'écran et des périphériques audio via le protocole HDMI-CEC.
 * **Remapping Indépendant des Touches Télécommande (Style Button Mapper) :**

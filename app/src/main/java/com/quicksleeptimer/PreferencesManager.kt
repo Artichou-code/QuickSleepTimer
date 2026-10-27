@@ -92,6 +92,22 @@ class PreferencesManager(private val context: Context) {
     @Volatile var cachedRestoreVolumeOnWake: Boolean = true
         private set
 
+    // Soft Wake-up (Progressive startup brightness)
+    @Volatile var cachedSoftWakeEnabled: Boolean = DEFAULT_SOFT_WAKE_ENABLED
+        private set
+    @Volatile var cachedSoftWakeStartHour: Int = DEFAULT_SOFT_WAKE_START_HOUR
+        private set
+    @Volatile var cachedSoftWakeStartMinute: Int = DEFAULT_SOFT_WAKE_START_MINUTE
+        private set
+    @Volatile var cachedSoftWakeEndHour: Int = DEFAULT_SOFT_WAKE_END_HOUR
+        private set
+    @Volatile var cachedSoftWakeEndMinute: Int = DEFAULT_SOFT_WAKE_END_MINUTE
+        private set
+    @Volatile var cachedSoftWakeDurationMin: Int = DEFAULT_SOFT_WAKE_DURATION_MIN
+        private set
+    @Volatile var cachedSoftWakeIntensity: String = DEFAULT_SOFT_WAKE_INTENSITY
+        private set
+
     init {
         // Pre-warm cache on creation
         applicationScope.launch {
@@ -170,6 +186,15 @@ class PreferencesManager(private val context: Context) {
                     cachedVolumeFadeEnabled = prefs[KEY_VOLUME_FADE_ENABLED] ?: false
                     cachedVolumeFadeMode = prefs[KEY_VOLUME_FADE_MODE] ?: VOLUME_FADE_LAST_5MIN
                     cachedRestoreVolumeOnWake = prefs[KEY_RESTORE_VOLUME_ON_WAKE] ?: true
+
+                    // Soft wake cache
+                    cachedSoftWakeEnabled = prefs[KEY_SOFT_WAKE_ENABLED] ?: DEFAULT_SOFT_WAKE_ENABLED
+                    cachedSoftWakeStartHour = prefs[KEY_SOFT_WAKE_START_HOUR] ?: DEFAULT_SOFT_WAKE_START_HOUR
+                    cachedSoftWakeStartMinute = prefs[KEY_SOFT_WAKE_START_MINUTE] ?: DEFAULT_SOFT_WAKE_START_MINUTE
+                    cachedSoftWakeEndHour = prefs[KEY_SOFT_WAKE_END_HOUR] ?: DEFAULT_SOFT_WAKE_END_HOUR
+                    cachedSoftWakeEndMinute = prefs[KEY_SOFT_WAKE_END_MINUTE] ?: DEFAULT_SOFT_WAKE_END_MINUTE
+                    cachedSoftWakeDurationMin = prefs[KEY_SOFT_WAKE_DURATION_MIN] ?: DEFAULT_SOFT_WAKE_DURATION_MIN
+                    cachedSoftWakeIntensity = prefs[KEY_SOFT_WAKE_INTENSITY] ?: DEFAULT_SOFT_WAKE_INTENSITY
                 }
         }
     }
@@ -215,6 +240,10 @@ class PreferencesManager(private val context: Context) {
     val volumeFadeEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_VOLUME_FADE_ENABLED] ?: false }
     val volumeFadeModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_VOLUME_FADE_MODE] ?: VOLUME_FADE_LAST_5MIN }
     val restoreVolumeOnWakeFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_RESTORE_VOLUME_ON_WAKE] ?: true }
+
+    val softWakeEnabledFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_SOFT_WAKE_ENABLED] ?: DEFAULT_SOFT_WAKE_ENABLED }
+    val softWakeDurationFlow: Flow<Int> = context.dataStore.data.map { it[KEY_SOFT_WAKE_DURATION_MIN] ?: DEFAULT_SOFT_WAKE_DURATION_MIN }
+    val softWakeIntensityFlow: Flow<String> = context.dataStore.data.map { it[KEY_SOFT_WAKE_INTENSITY] ?: DEFAULT_SOFT_WAKE_INTENSITY }
 
     suspend fun setInitialDuration(minutes: Int) {
         cachedInitialDuration = minutes
@@ -354,6 +383,49 @@ class PreferencesManager(private val context: Context) {
         context.dataStore.edit { it[KEY_RESTORE_VOLUME_ON_WAKE] = restore }
     }
 
+    suspend fun setSoftWakeEnabled(enabled: Boolean) {
+        cachedSoftWakeEnabled = enabled
+        context.dataStore.edit { it[KEY_SOFT_WAKE_ENABLED] = enabled }
+    }
+
+    suspend fun setSoftWakeSchedule(startH: Int, startM: Int, endH: Int, endM: Int) {
+        cachedSoftWakeStartHour = startH
+        cachedSoftWakeStartMinute = startM
+        cachedSoftWakeEndHour = endH
+        cachedSoftWakeEndMinute = endM
+        context.dataStore.edit {
+            it[KEY_SOFT_WAKE_START_HOUR] = startH
+            it[KEY_SOFT_WAKE_START_MINUTE] = startM
+            it[KEY_SOFT_WAKE_END_HOUR] = endH
+            it[KEY_SOFT_WAKE_END_MINUTE] = endM
+        }
+    }
+
+    suspend fun setSoftWakeDuration(minutes: Int) {
+        val clamped = minutes.coerceIn(1, 30)
+        cachedSoftWakeDurationMin = clamped
+        context.dataStore.edit { it[KEY_SOFT_WAKE_DURATION_MIN] = clamped }
+    }
+
+    suspend fun setSoftWakeIntensity(intensity: String) {
+        cachedSoftWakeIntensity = intensity
+        context.dataStore.edit { it[KEY_SOFT_WAKE_INTENSITY] = intensity }
+    }
+
+    fun isCurrentTimeInSoftWakeWindow(): Boolean {
+        val calendar = java.util.Calendar.getInstance()
+        val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+        val startMinutes = cachedSoftWakeStartHour * 60 + cachedSoftWakeStartMinute
+        val endMinutes = cachedSoftWakeEndHour * 60 + cachedSoftWakeEndMinute
+
+        return if (startMinutes <= endMinutes) {
+            currentMinutes in startMinutes..endMinutes
+        } else {
+            // Traverse minuit (ex: 23:00 -> 08:00)
+            currentMinutes >= startMinutes || currentMinutes <= endMinutes
+        }
+    }
+
     fun getDimmerAlphaFloat(intensity: String = cachedDimmerIntensity): Float {
         return when (intensity) {
             INTENSITY_LIGHT -> 0.25f
@@ -407,6 +479,15 @@ class PreferencesManager(private val context: Context) {
         const val VOLUME_FADE_LAST_10MIN = "last_10min"
         const val VOLUME_FADE_FULL = "full"
 
+        // Soft Wake-up Defaults
+        const val DEFAULT_SOFT_WAKE_ENABLED = false
+        const val DEFAULT_SOFT_WAKE_START_HOUR = 23
+        const val DEFAULT_SOFT_WAKE_START_MINUTE = 0
+        const val DEFAULT_SOFT_WAKE_END_HOUR = 8
+        const val DEFAULT_SOFT_WAKE_END_MINUTE = 0
+        const val DEFAULT_SOFT_WAKE_DURATION_MIN = 5
+        const val DEFAULT_SOFT_WAKE_INTENSITY = INTENSITY_VERY_STRONG
+
         private val KEY_INITIAL_DURATION = intPreferencesKey("pref_initial_duration")
         private val KEY_INCREMENT_STEP = intPreferencesKey("pref_increment_step")
         private val KEY_MAX_DURATION = intPreferencesKey("pref_max_duration")
@@ -452,6 +533,14 @@ class PreferencesManager(private val context: Context) {
         private val KEY_VOLUME_FADE_ENABLED = booleanPreferencesKey("pref_volume_fade_enabled")
         private val KEY_VOLUME_FADE_MODE = stringPreferencesKey("pref_volume_fade_mode")
         private val KEY_RESTORE_VOLUME_ON_WAKE = booleanPreferencesKey("pref_restore_volume_on_wake")
+
+        private val KEY_SOFT_WAKE_ENABLED = booleanPreferencesKey("pref_soft_wake_enabled")
+        private val KEY_SOFT_WAKE_START_HOUR = intPreferencesKey("pref_soft_wake_start_hour")
+        private val KEY_SOFT_WAKE_START_MINUTE = intPreferencesKey("pref_soft_wake_start_minute")
+        private val KEY_SOFT_WAKE_END_HOUR = intPreferencesKey("pref_soft_wake_end_hour")
+        private val KEY_SOFT_WAKE_END_MINUTE = intPreferencesKey("pref_soft_wake_end_minute")
+        private val KEY_SOFT_WAKE_DURATION_MIN = intPreferencesKey("pref_soft_wake_duration_min")
+        private val KEY_SOFT_WAKE_INTENSITY = stringPreferencesKey("pref_soft_wake_intensity")
 
         @Volatile
         private var INSTANCE: PreferencesManager? = null

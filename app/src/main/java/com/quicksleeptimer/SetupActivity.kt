@@ -27,7 +27,9 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.quicksleeptimer.databinding.ActivitySetupBinding
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.KeyAssignListener {
@@ -64,6 +66,16 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         PreferencesManager.VOLUME_FADE_LAST_10MIN,
         PreferencesManager.VOLUME_FADE_FULL
     )
+
+    private val softWakeDurationOptions = listOf(1, 2, 5, 10, 15, 20, 25, 30)
+    private val softWakeIntensityOptions = listOf(
+        PreferencesManager.INTENSITY_MEDIUM,
+        PreferencesManager.INTENSITY_STRONG,
+        PreferencesManager.INTENSITY_VERY_STRONG,
+        PreferencesManager.INTENSITY_EXTREME
+    )
+    private var isTestingSoftWake = false
+    private var testSoftWakeJob: kotlinx.coroutines.Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
@@ -128,6 +140,7 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         setupPermissionControls()
         setupButtonMappingControls()
         setupNightDimmerControls()
+        setupSoftWakeControls()
         setupVolumeFadeControls()
         setupActionButtons()
         observePreferences()
@@ -213,6 +226,9 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     override fun onStop() {
         super.onStop()
+        if (isTestingSoftWake) {
+            stopSoftWakeTest()
+        }
         if (TimerService.isTestingVolumeFade) {
             TimerService.stopVolumeFadeTest(this)
         }
@@ -233,6 +249,9 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
 
     override fun onDestroy() {
         super.onDestroy()
+        if (isTestingSoftWake) {
+            stopSoftWakeTest()
+        }
         if (isListeningForKey) {
             cancelKeyListening()
         }
@@ -357,6 +376,26 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
                 } else {
                     binding.btnTestVolumeFade.text = getString(R.string.btn_test_volume_fade)
                     binding.btnTestVolumeFade.setTextColor(getColor(R.color.tv_text_primary))
+                }
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.softWakeEnabledFlow.collectLatest { enabled ->
+                updateSoftWakeEnabledUi(enabled)
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.softWakeDurationFlow.collectLatest { minutes ->
+                binding.btnSoftWakeDuration.text = "$minutes min"
+            }
+        }
+        lifecycleScope.launch {
+            prefsManager.softWakeIntensityFlow.collectLatest { intensity ->
+                binding.btnSoftWakeIntensity.text = when (intensity) {
+                    PreferencesManager.INTENSITY_STRONG -> getString(R.string.dimmer_intensity_strong)
+                    PreferencesManager.INTENSITY_VERY_STRONG -> getString(R.string.dimmer_intensity_very_strong)
+                    PreferencesManager.INTENSITY_EXTREME -> getString(R.string.dimmer_intensity_extreme)
+                    else -> getString(R.string.dimmer_intensity_medium)
                 }
             }
         }
@@ -969,6 +1008,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             return true
         }
 
+        if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_BACK && isTestingSoftWake) {
+            stopSoftWakeTest()
+            return true
+        }
+
         if (isListeningForKey && event.action == KeyEvent.ACTION_DOWN) {
             val keyCode = event.keyCode
             if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -1045,6 +1089,182 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
         mainHandler.postDelayed({
             overlayManager.hideDimmer()
         }, 4000L)
+    }
+
+    // ==========================================
+    // SECTION 4B : RÉVEIL EN DOUCEUR (DÉMARRAGE PROGRESSIF)
+    // ==========================================
+
+    private fun setupSoftWakeControls() {
+        binding.btnSoftWakeToggle.setOnClickListener {
+            val newState = !prefsManager.cachedSoftWakeEnabled
+            lifecycleScope.launch { prefsManager.setSoftWakeEnabled(newState) }
+        }
+
+        binding.btnSoftWakeSchedule.setOnClickListener {
+            showSoftWakeScheduleDialog()
+        }
+
+        binding.btnSoftWakeDuration.setOnClickListener {
+            val current = prefsManager.cachedSoftWakeDurationMin
+            val nextIndex = (softWakeDurationOptions.indexOf(current) + 1) % softWakeDurationOptions.size
+            val nextValue = softWakeDurationOptions[nextIndex]
+            lifecycleScope.launch { prefsManager.setSoftWakeDuration(nextValue) }
+        }
+
+        binding.btnSoftWakeIntensity.setOnClickListener {
+            val current = prefsManager.cachedSoftWakeIntensity
+            val nextIndex = (softWakeIntensityOptions.indexOf(current) + 1) % softWakeIntensityOptions.size
+            val nextValue = softWakeIntensityOptions[nextIndex]
+            lifecycleScope.launch { prefsManager.setSoftWakeIntensity(nextValue) }
+        }
+
+        binding.btnTestSoftWake.setOnClickListener {
+            if (isTestingSoftWake) {
+                stopSoftWakeTest()
+            } else {
+                startSoftWakeTest()
+            }
+        }
+
+        updateSoftWakeScheduleUi()
+    }
+
+    private fun updateSoftWakeEnabledUi(enabled: Boolean) {
+        if (enabled) {
+            binding.btnSoftWakeToggle.text = "ACTIVÉ ✓"
+            binding.btnSoftWakeToggle.setTextColor(getColor(R.color.tv_emerald_active))
+            binding.btnSoftWakeToggle.setBackgroundResource(R.drawable.bg_apple_toggle_active)
+            binding.layoutSoftWakeOptions.visibility = View.VISIBLE
+        } else {
+            binding.btnSoftWakeToggle.text = "DÉSACTIVÉ"
+            binding.btnSoftWakeToggle.setTextColor(getColor(R.color.tv_text_secondary))
+            binding.btnSoftWakeToggle.setBackgroundResource(R.drawable.bg_apple_toggle_inactive)
+            binding.layoutSoftWakeOptions.visibility = View.GONE
+        }
+    }
+
+    private fun updateSoftWakeScheduleUi() {
+        val startH = prefsManager.cachedSoftWakeStartHour
+        val startM = prefsManager.cachedSoftWakeStartMinute
+        val endH = prefsManager.cachedSoftWakeEndHour
+        val endM = prefsManager.cachedSoftWakeEndMinute
+        binding.btnSoftWakeSchedule.text = "%02d:%02d → %02d:%02d".format(startH, startM, endH, endM)
+    }
+
+    private fun showSoftWakeScheduleDialog() {
+        val presets = arrayOf(
+            "23:00 → 08:00 (Recommandé par défaut)",
+            "23:00 → 07:00 (Nuit standard)",
+            "22:00 → 08:00 (Couche-tôt)",
+            "00:00 → 08:00 (Minuit - 8h)",
+            "00:00 → 09:00 (Grasse matinée)",
+            "Personnaliser les heures..."
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("Plage horaire du Réveil en Douceur")
+            .setItems(presets) { dialog, which ->
+                when (which) {
+                    0 -> lifecycleScope.launch {
+                        prefsManager.setSoftWakeSchedule(23, 0, 8, 0)
+                        updateSoftWakeScheduleUi()
+                    }
+                    1 -> lifecycleScope.launch {
+                        prefsManager.setSoftWakeSchedule(23, 0, 7, 0)
+                        updateSoftWakeScheduleUi()
+                    }
+                    2 -> lifecycleScope.launch {
+                        prefsManager.setSoftWakeSchedule(22, 0, 8, 0)
+                        updateSoftWakeScheduleUi()
+                    }
+                    3 -> lifecycleScope.launch {
+                        prefsManager.setSoftWakeSchedule(0, 0, 8, 0)
+                        updateSoftWakeScheduleUi()
+                    }
+                    4 -> lifecycleScope.launch {
+                        prefsManager.setSoftWakeSchedule(0, 0, 9, 0)
+                        updateSoftWakeScheduleUi()
+                    }
+                    5 -> showCustomHoursDialog()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun showCustomHoursDialog() {
+        var startH = prefsManager.cachedSoftWakeStartHour
+        var endH = prefsManager.cachedSoftWakeEndHour
+
+        val hoursList = (0..23).map { "%02d:00".format(it) }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("Heure de début (le soir)")
+            .setItems(hoursList) { d1, whichStart ->
+                startH = whichStart
+                d1.dismiss()
+                AlertDialog.Builder(this)
+                    .setTitle("Heure de fin (le matin)")
+                    .setItems(hoursList) { d2, whichEnd ->
+                        endH = whichEnd
+                        lifecycleScope.launch {
+                            prefsManager.setSoftWakeSchedule(startH, 0, endH, 0)
+                            updateSoftWakeScheduleUi()
+                        }
+                        d2.dismiss()
+                    }
+                    .setNegativeButton("Annuler", null)
+                    .show()
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun startSoftWakeTest() {
+        stopSoftWakeTest()
+        isTestingSoftWake = true
+        binding.btnTestSoftWake.text = getString(R.string.btn_stop_test_soft_wake)
+        binding.btnTestSoftWake.setTextColor(getColor(R.color.tv_status_warning))
+
+        val alpha = prefsManager.getDimmerAlphaFloat(prefsManager.cachedSoftWakeIntensity)
+        overlayManager.showDimmer(alpha)
+        overlayManager.showHud(
+            title = "🌅 Simulation Réveil en Douceur",
+            subtitle = "Luminosité progressive 15s • Appuyez sur RETOUR pour stopper",
+            autoDismissMs = 4000L
+        )
+
+        testSoftWakeJob = lifecycleScope.launch {
+            val steps = 30
+            val stepDelay = 500L // 15 seconds total
+            for (s in 1..steps) {
+                delay(stepDelay)
+                if (!isActive) break
+                val frac = s.toFloat() / steps
+                val curA = (alpha * (1f - frac)).coerceIn(0f, 1f)
+                overlayManager.setDimmerAlpha(curA)
+            }
+            overlayManager.hideDimmer(animated = true)
+            overlayManager.showHud(
+                title = "✓ Simulation terminée",
+                subtitle = getString(R.string.hud_soft_wake_cancelled_sub),
+                autoDismissMs = 3000L
+            )
+            isTestingSoftWake = false
+            binding.btnTestSoftWake.text = getString(R.string.btn_test_soft_wake)
+            binding.btnTestSoftWake.setTextColor(getColor(R.color.tv_text_primary))
+        }
+    }
+
+    private fun stopSoftWakeTest() {
+        testSoftWakeJob?.cancel()
+        testSoftWakeJob = null
+        isTestingSoftWake = false
+        overlayManager.hideDimmer(animated = true)
+        binding.btnTestSoftWake.text = getString(R.string.btn_test_soft_wake)
+        binding.btnTestSoftWake.setTextColor(getColor(R.color.tv_text_primary))
     }
 
     // ==========================================
@@ -1159,6 +1379,11 @@ class SetupActivity : AppCompatActivity(), SleepAccessibilityService.Companion.K
             binding.btnDimmerIntensity,
             binding.btnDimmerMode,
             binding.btnTestDimmer,
+            binding.btnSoftWakeToggle,
+            binding.btnSoftWakeSchedule,
+            binding.btnSoftWakeDuration,
+            binding.btnSoftWakeIntensity,
+            binding.btnTestSoftWake,
             binding.btnVolumeFadeToggle,
             binding.btnVolumeFadeMode,
             binding.btnRestoreVolume,

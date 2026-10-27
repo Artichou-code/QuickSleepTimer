@@ -2,9 +2,11 @@ package com.quicksleeptimer
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioManager
 import android.provider.Settings
 import android.text.TextUtils
@@ -13,6 +15,9 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class SleepAccessibilityService : AccessibilityService() {
@@ -32,6 +37,18 @@ class SleepAccessibilityService : AccessibilityService() {
             prefsManager.actionCustomFlow.collect {
                 updateKeyFilterFlags()
             }
+        }
+
+        val screenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        try {
+            registerReceiver(screenStateReceiver, screenFilter)
+            Log.d(TAG, "screenStateReceiver registered for SCREEN_ON / SCREEN_OFF / USER_PRESENT")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register screenStateReceiver: ${e.message}")
         }
     }
 
@@ -243,8 +260,129 @@ class SleepAccessibilityService : AccessibilityService() {
         }
     }
 
+    // ==========================================
+    // SOFT WAKE-UP (PROGRESSIVE STARTUP DIMMER)
+    // ==========================================
+
+    private val screenStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action ?: return
+            Log.d(TAG, "screenStateReceiver action: $action")
+            when (action) {
+                Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
+                    handleScreenOn()
+                }
+                Intent.ACTION_SCREEN_OFF -> {
+                    handleScreenOff()
+                }
+            }
+        }
+    }
+
+    private var softWakeJob: Job? = null
+    val isSoftWakeRunning: Boolean
+        get() = softWakeJob?.isActive == true
+
+    fun handleScreenOn() {
+        if (!prefsManager.cachedSoftWakeEnabled) {
+            Log.d(TAG, "handleScreenOn: Soft wake is disabled")
+            return
+        }
+        if (!prefsManager.isCurrentTimeInSoftWakeWindow()) {
+            Log.d(TAG, "handleScreenOn: Outside soft wake time window (${prefsManager.cachedSoftWakeStartHour}h - ${prefsManager.cachedSoftWakeEndHour}h)")
+            return
+        }
+        Log.d(TAG, "handleScreenOn: Inside soft wake window -> Triggering progressive soft wake!")
+        startSoftWakeDimmer()
+    }
+
+    fun handleScreenOff() {
+        if (isSoftWakeRunning) {
+            Log.d(TAG, "handleScreenOff: Screen turned off during soft wake -> Cleaning up")
+            cancelSoftWakeDimmer(showHud = false)
+        }
+    }
+
+    fun startSoftWakeDimmer(forcedDurationMinutes: Int? = null, isTest: Boolean = false) {
+        softWakeJob?.cancel()
+        val durationMin = forcedDurationMinutes ?: prefsManager.cachedSoftWakeDurationMin
+        val initialAlpha = prefsManager.getDimmerAlphaFloat(prefsManager.cachedSoftWakeIntensity)
+        val totalDurationMs = if (isTest) 15_000L else durationMin * 60_000L
+
+        Log.d(TAG, "startSoftWakeDimmer: durationMin=$durationMin, isTest=$isTest, initialAlpha=$initialAlpha")
+
+        // 1. Immediately apply the black filter in 0ms so the display never blinds the user
+        overlayManager.showDimmer(initialAlpha)
+
+        // 2. Show brief HUD informing the user and how to cancel
+        val timerButtonName = when {
+            prefsManager.cachedActionStar == PreferencesManager.ACTION_TIMER -> "★"
+            prefsManager.cachedActionLive == PreferencesManager.ACTION_TIMER -> "Live"
+            prefsManager.cachedActionApps == PreferencesManager.ACTION_TIMER -> "Apps"
+            prefsManager.cachedActionNetflix == PreferencesManager.ACTION_TIMER -> "Netflix"
+            prefsManager.cachedActionCustom == PreferencesManager.ACTION_TIMER -> "Raccourci"
+            else -> "Touche Minuteur"
+        }
+
+        val hudTitle = if (isTest) "🌅 Simulation Réveil en Douceur" else getString(R.string.hud_soft_wake_started, durationMin)
+        val hudSubtitle = if (isTest) "Montée accélérée (15s) • Appuyez sur $timerButtonName pour stopper" else "Luminosité progressive • Appuyez sur $timerButtonName pour annuler"
+        overlayManager.showHud(
+            title = hudTitle,
+            subtitle = hudSubtitle,
+            autoDismissMs = 4000L
+        )
+
+        // 3. Smooth transition coroutine
+        softWakeJob = serviceScope.launch {
+            val totalSteps = if (isTest) 30 else (durationMin * 60).coerceAtLeast(30)
+            val stepDelayMs = (totalDurationMs / totalSteps).coerceAtLeast(200L)
+
+            for (step in 1..totalSteps) {
+                delay(stepDelayMs)
+                if (!isActive) break
+                val fraction = step.toFloat() / totalSteps
+                val currentAlpha = (initialAlpha * (1f - fraction)).coerceIn(0f, 1f)
+                overlayManager.setDimmerAlpha(currentAlpha)
+            }
+
+            overlayManager.hideDimmer(animated = true)
+            Log.d(TAG, "Soft Wake Dimmer completed successfully")
+            softWakeJob = null
+
+            if (isTest) {
+                overlayManager.showHud(
+                    title = "✓ Simulation terminée",
+                    subtitle = getString(R.string.hud_soft_wake_cancelled_sub),
+                    autoDismissMs = 3000L
+                )
+            }
+        }
+    }
+
+    fun cancelSoftWakeDimmer(showHud: Boolean = true) {
+        if (isSoftWakeRunning) {
+            softWakeJob?.cancel()
+            softWakeJob = null
+            overlayManager.hideDimmer(animated = true)
+            Log.d(TAG, "cancelSoftWakeDimmer: Cancelled and dimmer hidden")
+            if (showHud) {
+                overlayManager.showHud(
+                    title = getString(R.string.hud_soft_wake_cancelled),
+                    subtitle = getString(R.string.hud_soft_wake_cancelled_sub),
+                    autoDismissMs = 3000L
+                )
+            }
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            unregisterReceiver(screenStateReceiver)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error unregistering screenStateReceiver: ${e.message}")
+        }
+        cancelSoftWakeDimmer(showHud = false)
         if (::overlayManager.isInitialized) {
             overlayManager.hideStealthShield(animated = false)
         }
@@ -336,6 +474,14 @@ class SleepAccessibilityService : AccessibilityService() {
 
         if (matchedAction != null) {
             if (action == KeyEvent.ACTION_DOWN) {
+                // If soft wake is active and user presses the key assigned to Timer:
+                // Immediately cancel soft wake and restore 100% full brightness!
+                if (matchedAction == PreferencesManager.ACTION_TIMER && isSoftWakeRunning) {
+                    Log.d(TAG, "Timer key pressed while Soft Wake is active -> Cancelling Soft Wake Dimmer")
+                    cancelSoftWakeDimmer(showHud = true)
+                    return true
+                }
+
                 val activePkg = getActivePackage()
                 val isOnLauncher = isLauncherOrSettings(activePkg)
                 Log.d(TAG, "Hardware key intercepted ($matchedLabel): keyCode=$keyCode, scanCode=$scanCode (${getFriendlyKeyName(keyCode, scanCode)}), action=$matchedAction, app=$matchedPkg, isOnLauncher=$isOnLauncher (pkg=$activePkg)")

@@ -6,6 +6,25 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.3.9] - 2026-10-27
+
+### 🌅 Réveil en Douceur & Démarrage Progressif Nocturne (Soft Wake-up)
+* **Protection Contre l'Éblouissement Nocturne :**
+  - Ajout d'une nouvelle fonctionnalité majeure conçue pour éviter « l'explosion des yeux » lorsqu'on allume la télévision au milieu de la nuit ou au petit matin.
+  - Dès l'allumage ou la sortie de veille (`ACTION_SCREEN_ON` ou démarrage à froid `BOOT_COMPLETED`), l'écran est instantanément recouvert d'un filtre noir protecteur (à 85% d'opacité en &lt; 1 ms).
+  - La luminosité augmente ensuite de manière douce, fluide et continue jusqu'à 100% de la luminosité normale de la TV.
+* **Plage Horaire Nocturne Entièrement Personnalisable :**
+  - L'utilisateur peut définir la période d'activation automatique (par défaut `23:00 → 08:00`), avec prise en charge intelligente du chevauchement de minuit.
+  - Sélecteur TV simple et rapide avec pré-réglages ergonomiques adaptés à la télécommande (`23h-8h`, `23h-7h`, `22h-8h`, `00h-8h`, `00h-9h`) et mode personnalisation par tranche d'heures.
+* **Durée de Montée Réglable de 1 à 30 Minutes :**
+  - Choix de la vitesse de transition : `1 min`, `2 min`, `5 min` (par défaut), `10 min`, `15 min`, `20 min`, `25 min`, `30 min`.
+* **Annulation Manuelle Immédiate :**
+  - Si l'utilisateur est déjà bien réveillé et veut repasser instantanément à 100% de luminosité, un simple appui sur la touche physique configurée pour le minuteur (Étoile ★, Live TV, Netflix, etc.) coupe le filtre noir et rétablit la pleine luminosité avec un discret HUD de confirmation (`🌅 Réveil en douceur désactivé — Pleine luminosité rétablie`).
+* **Bouton de Test / Simulation en Direct (15s) :**
+  - Bouton interactif dans les réglages permettant de prévisualiser immédiatement l'effet de montée progressive de la luminosité en accéléré sur 15 secondes.
+
+---
+
 ## [1.3.8] - 2026-10-26
 
 ### 🔘 Séparation & Support Dédié de la Touche Apps (9 points Xiaomi)

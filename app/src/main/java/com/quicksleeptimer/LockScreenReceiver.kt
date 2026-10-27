@@ -15,6 +15,9 @@ class LockScreenReceiver : BroadcastReceiver() {
         } else if (action == ACTION_CANCEL_NOW) {
             context?.let { TimerService.cancel(it) }
             Log.d(TAG, "Timer cancelled via broadcast")
+        } else if (action == Intent.ACTION_BOOT_COMPLETED) {
+            Log.d(TAG, "BOOT_COMPLETED received -> checking soft wake startup")
+            SleepAccessibilityService.instance?.handleScreenOn()
         }
     }
 
