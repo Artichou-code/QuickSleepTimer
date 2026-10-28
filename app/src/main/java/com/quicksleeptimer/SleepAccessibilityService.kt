@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
+import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
@@ -83,6 +84,10 @@ class SleepAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+        val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (powerManager != null && !powerManager.isInteractive) {
+            return
+        }
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
             val className = event.className?.toString()
@@ -533,6 +538,7 @@ class SleepAccessibilityService : AccessibilityService() {
                     pkg == "com.google.android.apps.tv.launcherx" ||
                     pkg == "com.google.android.tvlauncher" ||
                     pkg == "com.android.tv.launcher" ||
+                    pkg.startsWith("com.mitv.tvhome") ||
                     pkg == "com.android.tv.settings" ||
                     pkg == "com.google.tv.settings.chromecast" ||
                     pkg == "com.amazon.firehomelauncher" ||
@@ -588,7 +594,6 @@ class SleepAccessibilityService : AccessibilityService() {
                     pkg == "com.android.tv" ||
                     pkg == "com.google.android.tv.onboarding" ||
                     pkg == "com.mitv.tvhome.michannel" ||
-                    pkg == "com.mitv.tvhome.atv" ||
                     pkg.contains("livechannels", ignoreCase = true)
         }
 
@@ -599,6 +604,9 @@ class SleepAccessibilityService : AccessibilityService() {
 
         fun isAuxiliaryDialog(pkg: String, className: String?): Boolean {
             if (pkg == "com.google.android.gms" && className?.contains("assistedsignin", ignoreCase = true) == true) {
+                return true
+            }
+            if (pkg == "com.mitv.tvhome.atv") {
                 return true
             }
             return false
